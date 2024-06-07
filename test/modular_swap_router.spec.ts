@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { PreparationResult, preparationContracts } from "../utils/preparation"
+import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
 import { keccak256, toUtf8Bytes, solidityPacked } from "ethers";
 
 describe("modular_swap_router.spec.ts", function () {
@@ -10,11 +10,6 @@ describe("modular_swap_router.spec.ts", function () {
   })
   
   describe("AccessControl", async () => {
-    let MANAGER_ROLE: string
-
-    beforeEach("role preparation", async () => {
-      MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
-    })
 
     it("setTokenInToTokenOutToExchange", async () => {
       const newTokenIn = await c.USDCe.getAddress()
@@ -29,11 +24,6 @@ describe("modular_swap_router.spec.ts", function () {
   })
 
   describe("UniswapModule: AccessControl", async () => {
-    let MANAGER_ROLE: string
-
-    beforeEach("role preparation", async () => {
-      MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
-    })
 
     it("setUniswapPath", async () => {
       const newPath = solidityPacked(["address", "uint24", "address"], [await c.WBTC.getAddress(), 3000, await c.WBTC.getAddress()])

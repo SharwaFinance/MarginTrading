@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { PreparationResult, preparationContracts } from "../utils/preparation"
+import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
 import { ZeroAddress, keccak256, toUtf8Bytes } from "ethers";
 
 describe("margin_account.spec.ts", function () {
@@ -10,11 +10,6 @@ describe("margin_account.spec.ts", function () {
   })
   
   describe("AccessControl", async () => {
-    let MANAGER_ROLE: string
-
-    beforeEach("role preparation", async () => {
-      MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
-    })
 
     it("setModularSwapRouter", async () => {
       await c.MarginAccount.connect(c.deployer).setModularSwapRouter(ZeroAddress)

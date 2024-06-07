@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { parseUnits, ZeroAddress, keccak256, toUtf8Bytes } from "ethers";
 import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { PreparationResult, preparationContracts } from "../utils/preparation"
+import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
 
 describe("margin_trading.spec.ts", function () {
   let c: PreparationResult
@@ -42,7 +42,7 @@ describe("margin_trading.spec.ts", function () {
       c.MarginTrading.connect(c.deployer).provideERC20(0, await c.USDC.getAddress(), USDCprovideAmount)
     ).to.changeTokenBalances(
       c.USDC, 
-      [await c.signers[0].getAddress(), await c.MarginAccount.getAddress()], 
+      [await c.signers[0].getAddress(), await c.MarginAccount.getAddress()],  
       [-USDCprovideAmount, USDCprovideAmount]
     );
     expect(await c.MarginAccount.getErc20ByContract(0, await c.USDC.getAddress())).to.be.eq(USDCprovideAmount);
@@ -312,7 +312,7 @@ describe("margin_trading.spec.ts", function () {
     it("repay: invalid token", async () => {
       await expect(
         c.MarginTrading.connect(c.deployer).repay(marginAccountID, await c.USDCe.getAddress(), loanAmount)
-      ).to.be.revertedWith("Insufficient funds to repay the debt") 
+      ).to.be.revertedWith("Token is not supported") 
     });
 
     it("repay: invalid amount", async () => {
@@ -452,12 +452,6 @@ describe("margin_trading.spec.ts", function () {
   })
 
   describe("AccessControl", async () => {
-    let MANAGER_ROLE: string
-
-    beforeEach("role preparation", async () => {
-      MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
-    })
-
     it("setModularSwapRouter", async () => {
       await c.MarginTrading.connect(c.deployer).setModularSwapRouter(ZeroAddress)
       await expect(

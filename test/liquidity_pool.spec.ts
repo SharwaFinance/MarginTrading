@@ -48,8 +48,8 @@ describe("liquidity_pool.spec.sol", function () {
     await liquidityPoolUSDC.grantRole(MANAGER_ROLE, deployer)
 
     const amountOtherUSDC = ethers.parseUnits("5000", 6);
-    await USDC.transfer(await firstInvestor.getAddress(), amountOtherUSDC); // Send 5000 USDC for tests
-    await USDC.transfer(await secondInvestor.getAddress(), amountOtherUSDC); // Send 5000 USDC for tests
+    await USDC.transfer(await firstInvestor.getAddress(), amountOtherUSDC); 
+    await USDC.transfer(await secondInvestor.getAddress(), amountOtherUSDC); 
 
     await liquidityPoolUSDC.connect(deployer).setInterestRate(ethers.parseUnits("500", 0));
   })
@@ -121,14 +121,12 @@ describe("liquidity_pool.spec.sol", function () {
     it("(provide) Two investors send tokens to LiquidityPool one time they can exchange shares", async function () {
       let amount = ethers.parseUnits("1000", 6);
 
-      // first sends 1000 from 5000 acc
       await USDC.connect(firstInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
       await liquidityPoolUSDC.connect(firstInvestor).provide(amount);
 
       const amountCheckFirstInvestor = ethers.parseUnits("4000", 6);
       const amountCheckShareTokensFirstInvestor = ethers.parseUnits("1000", 18);
 
-      // check first before second
       expect(
         await USDC.balanceOf(await firstInvestor.getAddress()),
         "balance of the investor should have decreased to " +
@@ -144,7 +142,6 @@ describe("liquidity_pool.spec.sol", function () {
         amountCheckShareTokensFirstInvestor
       ).to.equal(amountCheckShareTokensFirstInvestor);
 
-      // second sends 500 from 5000 acc
       amount = ethers.parseUnits("500", 6);
       await USDC.connect(secondInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
       await liquidityPoolUSDC.connect(secondInvestor).provide(amount);
@@ -168,7 +165,6 @@ describe("liquidity_pool.spec.sol", function () {
         amountCheckShareTokensSecondInvestor
       ).to.equal(amountCheckShareTokensSecondInvestor);
 
-      // share exchange of 250 tokens
       const amountExchange = ethers.parseUnits("250", 18);
       await liquidityPoolUSDC
         .connect(secondInvestor)
@@ -192,14 +188,12 @@ describe("liquidity_pool.spec.sol", function () {
       const balanceFirstInvestorBefore = await USDC.balanceOf(
         await firstInvestor.getAddress()
       );
-      // first sends 1000 from 5000 acc
       await USDC.connect(firstInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
       await liquidityPoolUSDC.connect(firstInvestor).provide(amount);
 
       const amountCheckFirstInvestor = ethers.parseUnits("4000", 6);
       const amountCheckShareTokensFirstInvestor = ethers.parseUnits("1000", 18);
 
-      // check first before second
       expect(
         await USDC.balanceOf(await firstInvestor.getAddress()),
         "balance of the investor should have decreased to " +
@@ -215,7 +209,6 @@ describe("liquidity_pool.spec.sol", function () {
         amountCheckShareTokensFirstInvestor
       ).to.equal(amountCheckShareTokensFirstInvestor);
 
-      // second sends 500 from 5000 acc
       amount = ethers.parseUnits("500", 6);
       await USDC.connect(secondInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
       await liquidityPoolUSDC.connect(secondInvestor).provide(amount);
@@ -239,7 +232,6 @@ describe("liquidity_pool.spec.sol", function () {
         amountCheckShareTokensSecondInvestor
       ).to.equal(amountCheckShareTokensSecondInvestor);
 
-      // share exchange of 250 tokens
       const amountExchange = ethers.parseUnits("250", 18);
       await liquidityPoolUSDC
         .connect(secondInvestor)
@@ -364,14 +356,12 @@ describe("liquidity_pool.spec.sol", function () {
     it("(withdraw) I-5 Two investors withdraw tokens from LiquidityPool even when traded", async function () {
       let amount = ethers.parseUnits("1000", 6);
 
-      // first sends 1000 from 5000 acc
       await USDC.connect(firstInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
       await liquidityPoolUSDC.connect(firstInvestor).provide(amount);
 
       const amountCheckFirstInvestor = ethers.parseUnits("4000", 6);
       const amountCheckShareTokensFirstInvestor = ethers.parseUnits("1000", 18);
 
-      // check first before second
       expect(
         await USDC.balanceOf(await firstInvestor.getAddress()),
         "balance of the investor should have decreased to " +
@@ -387,7 +377,6 @@ describe("liquidity_pool.spec.sol", function () {
         amountCheckShareTokensFirstInvestor
       ).to.equal(amountCheckShareTokensFirstInvestor);
 
-      // first trader issues debt
       amount = ethers.parseUnits("500", 6);
       await marginTrading
         .connect(firstTrader)
@@ -398,13 +387,11 @@ describe("liquidity_pool.spec.sol", function () {
         "Total borrowed money should be equal to " + amount
       ).to.equal(amount);
 
-      // first investor cannot withdraw all amount
       amount = ethers.parseUnits("1000", 18);
       expect(
         liquidityPoolUSDC.connect(firstInvestor).withdraw(amount)
       ).to.be.revertedWith("Liquidity pool has not enough free tokens!");
 
-      // second sends 500 from 5000 acc
       amount = ethers.parseUnits("1001", 6);
 
       await USDC.connect(secondInvestor).approve(liquidityPoolUSDC.getAddress(), amount);
@@ -443,7 +430,6 @@ describe("liquidity_pool.spec.sol", function () {
       await USDC
         .connect(firstInvestor).transfer(await marginTrading.getAddress(), ethers.parseUnits("50", 6));
 
-      // first investor sends 1000 from 5000 acc
       const amountFirstInvestor = ethers.parseUnits("3000", 6);
       await USDC
         .connect(firstInvestor)
@@ -452,7 +438,6 @@ describe("liquidity_pool.spec.sol", function () {
         .connect(firstInvestor)
         .provide(amountFirstInvestor);
 
-      // second investor sends 1000 from 5000 acc
       const amountSecondInvestor = ethers.parseUnits("3000", 6);
       await USDC
         .connect(secondInvestor)
@@ -493,7 +478,6 @@ describe("liquidity_pool.spec.sol", function () {
 
       expect(await USDC.balanceOf(insurancePool)).to.equal(ethers.parseUnits("6684", 0));
 
-      // comparing calculated investor's profit to real
       expect(
         await USDC.balanceOf(await secondInvestor.getAddress()),
         "after withdrawal balance of the investor should be equal to 5000063498"
@@ -569,7 +553,7 @@ describe("liquidity_pool.spec.sol", function () {
       let amount = ethers.parseUnits("1000", 6);
       await USDC
         .connect(firstInvestor)
-        .transfer(await insurancePool.getAddress(), amount); // We transfer part of the money to the insurance pool (we simulate the availability of money)
+        .transfer(await insurancePool.getAddress(), amount); 
 
       const amountFirstInvestor = ethers.parseUnits("1000", 6);
       await USDC
@@ -609,7 +593,6 @@ describe("liquidity_pool.spec.sol", function () {
           (await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 2)) -
           ethers.parseUnits("300", 6)
         );
-      // Expected work from MarginTrading
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
         await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
@@ -624,7 +607,6 @@ describe("liquidity_pool.spec.sol", function () {
           (await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 2)) -
           ethers.parseUnits("600", 6)
         );
-      // Expected work from MarginTrading
       await marginTrading.connect(secondTrader).repay(
         ethers.parseUnits("2", 0),
         await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
@@ -663,7 +645,7 @@ describe("liquidity_pool.spec.sol", function () {
       );
       await USDC
         .connect(firstInvestor)
-        .transfer(await marginTrading.getAddress(), amount); // It is used to simulate the profit of a trader
+        .transfer(await marginTrading.getAddress(), amount); 
 
       const amountFirstInvestor = ethers.parseUnits("1000", 6);
       await USDC
@@ -696,20 +678,18 @@ describe("liquidity_pool.spec.sol", function () {
 
       await time.increaseTo(await time.latest() + 60);
 
-      // Expected work from MarginTrading
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1), 
         await USDC.getAddress(),
-        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1) // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1) 
       );
 
-      // Expected work from MarginTrading
       await marginTrading.connect(secondTrader).repay(
         ethers.parseUnits("2", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), 
         await USDC.getAddress(),
-        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1) // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1) 
       );
 
       expect(
@@ -813,7 +793,7 @@ describe("liquidity_pool.spec.sol", function () {
       await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0))
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("350", 6)
       );
@@ -851,16 +831,13 @@ describe("liquidity_pool.spec.sol", function () {
 
       await time.increaseTo(await time.latest() + 60 * 60 * 24 * 365);
 
-      // get current insuranceRateMultiplier
       const insuranceRateMultiplier = await liquidityPoolUSDC.insuranceRateMultiplier();
 
       const firstTraderDebtWithInterest = await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(
         ethers.parseUnits("1", 0), await time.latest() + 1
       );
 
-      // first trader
-      // returns debt with interest
-      // insurance pool gets share of profit
+
       await marginTrading
         .connect(firstTrader)
         .repay(
@@ -888,7 +865,6 @@ describe("liquidity_pool.spec.sol", function () {
         .connect(firstInvestor)
         .approve(await liquidityPoolUSDC.getAddress(), amountFirstInvestor);
 
-      // checking event Provide
       await expect(
         liquidityPoolUSDC.connect(firstInvestor).provide(amountFirstInvestor)
       )
@@ -904,7 +880,6 @@ describe("liquidity_pool.spec.sol", function () {
         .connect(secondInvestor)
         .approve(await liquidityPoolUSDC.getAddress(), amountSecondInvestor);
 
-      // checking event Provide
       await expect(
         liquidityPoolUSDC
           .connect(secondInvestor)
@@ -917,7 +892,6 @@ describe("liquidity_pool.spec.sol", function () {
           amountSecondInvestor
         );
 
-      // checking event Withdraw
       await expect(
         liquidityPoolUSDC
           .connect(secondInvestor)
@@ -938,7 +912,6 @@ describe("liquidity_pool.spec.sol", function () {
         .connect(secondInvestor)
         .provide(amountSecondInvestor);
 
-      // checking event Borrow
       await expect(
         marginTrading
           .connect(firstTrader)
@@ -950,7 +923,6 @@ describe("liquidity_pool.spec.sol", function () {
         .to.emit(liquidityPoolUSDC, "Borrow")
         .withArgs(ethers.parseUnits("1", 0), ethers.parseUnits("300", 6));
 
-      // checking event Borrow
       await expect(
         marginTrading
           .connect(secondTrader)
@@ -962,24 +934,19 @@ describe("liquidity_pool.spec.sol", function () {
         .to.emit(liquidityPoolUSDC, "Borrow")
         .withArgs(ethers.parseUnits("2", 0), ethers.parseUnits("600", 6));
 
-      // checking event UpdateInterestRate
 
       await expect(liquidityPoolUSDC.setInterestRate(ethers.parseUnits("500", 0)))
         .to.emit(liquidityPoolUSDC, "UpdateInterestRate")
         .withArgs(ethers.parseUnits("1500000001", 0), ethers.parseUnits("900000001", 0), ethers.parseUnits("500", 0));
 
-      // end of checking event UpdateInterestRate
 
-      // checking event UpdateMaximumPoolCapacity
       const amountNewCapacity = ethers.parseUnits("1000000", 6);
       await expect(liquidityPoolUSDC.setMaximumPoolCapacity(amountNewCapacity))
         .to.emit(liquidityPoolUSDC, "UpdateMaximumPoolCapacity")
         .withArgs(amountNewCapacity);
 
-      // get current insuranceRateMultiplier
       const insuranceRateMultiplier = await liquidityPoolUSDC.insuranceRateMultiplier();
 
-      // get debt and interest of traders
       let firstTraderDebtWithInterest: bigint = await liquidityPoolUSDC.getDebtWithAccruedInterest(
         ethers.parseUnits("1", 0)
       ),
@@ -990,9 +957,6 @@ describe("liquidity_pool.spec.sol", function () {
         await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1),
         secondTraderDebt = await liquidityPoolUSDC.portfolioIdToDebt(ethers.parseUnits("2", 0));
 
-      // second trader
-      // returns debt with interest
-      // insurance pool gets share of profit
       await marginTrading
         .connect(secondTrader)
         .repay(
@@ -1021,12 +985,6 @@ describe("liquidity_pool.spec.sol", function () {
         "insurance pool should have gotten " +
         (secondTraderDebtWithInterest - secondTraderDebt) * insuranceRateMultiplier / ethers.parseUnits("10000", 0)
       ).to.equal((secondTraderDebtWithInterest - secondTraderDebt) * insuranceRateMultiplier / ethers.parseUnits("10000", 0));
-
-      // first trader
-      // returns debt with interest
-      // insurance pool gets share of profit
-
-      // checking event Repay
 
       await expect(
         marginTrading
@@ -1081,7 +1039,6 @@ describe("liquidity_pool.spec.sol", function () {
         );
 
       const checkTotalBorrowsSnapshot = await liquidityPoolUSDC.totalBorrows();
-      // The beginning of the interest calculation simulation
       const amount = ethers.parseUnits("10", 6);
       await USDC.connect(firstInvestor).transfer(await firstTrader.getAddress(), amount); // In order not to increase the share of the first investor, we use a trader 
       await USDC
@@ -1090,7 +1047,6 @@ describe("liquidity_pool.spec.sol", function () {
       await liquidityPoolUSDC
         .connect(firstTrader)
         .provide(amount);
-      // The end of the interest calculation simulation
 
       expect(
         await liquidityPoolUSDC.netDebt() + await liquidityPoolUSDC.totalInterestSnapshot(),
@@ -1134,7 +1090,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1179,7 +1135,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1223,7 +1179,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1267,7 +1223,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1311,7 +1267,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1343,7 +1299,7 @@ describe("liquidity_pool.spec.sol", function () {
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
-        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await liquidityPoolUSDC.getDebtWithAccruedInterest(ethers.parseUnits("1", 0)), 
         await USDC.getAddress(),
         ethers.parseUnits("300", 6)
       );
@@ -1459,11 +1415,6 @@ describe("liquidity_pool.spec.sol", function () {
   });
 
   describe("AccessControl", async () => {
-    let MANAGER_ROLE: string
-
-    beforeEach("role preparation", async () => {
-      MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
-    })
 
     it("setMaximumPoolCapacity", async () => {
       const newValue = BigInt(0)
@@ -1508,6 +1459,5 @@ describe("liquidity_pool.spec.sol", function () {
       ).to.be.revertedWith("AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08") 
       expect(await liquidityPoolUSDC.interestRate()).to.eq(newValue)
     })
-
   })
 });
