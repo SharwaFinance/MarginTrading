@@ -128,7 +128,7 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
         for (uint i; i < erc721Params.length; i++) {
             address moduleAddress = tokenInToTokenOutToExchange[erc721Params[i].tokenIn][erc721Params[i].tokenOut];
             if (moduleAddress != address(0)) {
-                amountOut += IPositionManagerERC721(moduleAddress).liquidate(erc721Params[i].value);
+                amountOut += IPositionManagerERC721(moduleAddress).liquidate(erc721Params[i].value, erc721Params[i].holder);
             }
         }
     }
@@ -163,5 +163,12 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
         }
         address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
         return IPositionManagerERC20(moduleAddress).swapOutput(amountOut);
+    }
+
+    function exercise(address tokenIn, address tokenOut, uint id) external onlyRole(MARGIN_ACCOUNT_ROLE) returns(uint amountOut) {
+        address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
+        if (moduleAddress != address(0)) {
+            amountOut = IPositionManagerERC721(moduleAddress).exercise(id);
+        }
     }
 }

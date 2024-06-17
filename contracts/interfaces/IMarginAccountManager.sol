@@ -1,6 +1,8 @@
 pragma solidity 0.8.20;
 
-interface IMarginAccountManager {
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+interface IMarginAccountManager is IERC721{
 
     /**
      * @notice Creates a new margin account for the caller.

@@ -170,11 +170,17 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         swapID++;
     }
 
+    function exercise(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID)  {
+        marginAccount.exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID, msg.sender);
+
+        emit Exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID);
+    }
+
     // EXTERNAL FUNCTIONS //
     
     function liquidate(uint marginAccountID) external {
         require(getMarginAccountRatio(marginAccountID) <= redCoeff, "Margin Account ratio is too high to execute liquidation");
-        marginAccount.liquidate(marginAccountID, BASE_TOKEN);
+        marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID));
 
         emit Liquidate(marginAccountID);
     }

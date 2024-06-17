@@ -8,6 +8,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+
 /**
  * @title HegicModule
  * @dev A module for managing and liquidating Hegic options using ERC721 and ERC20 tokens.
@@ -15,59 +16,84 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @author 0nika0
  */
 contract HegicModule is IPositionManagerERC721, AccessControl {
+    bytes32 public constant MODULAR_SWAP_ROUTER_ROLE = keccak256("MODULAR_SWAP_ROUTER_ROLE");
 
     IERC20 public hegicReturnToken;
+    IERC721 public hegicPositionManager;
     IOperationalTreasury public operationalTreasury;
     IPositionManagerERC20 public assetExchangerUSDCetoUSDC;
-    IERC721 public hegicPositionManager;
 
-    address public portfolioLending;
-
-    bytes32 public constant MODULAR_SWAP_ROUTER_ROLE = keccak256("MODULAR_SWAP_ROUTER_ROLE");
+    address public marginAccount;
 
     constructor(
         IERC20 _hegicReturnToken,
+        IERC721 _hegicPositionManager,
         IOperationalTreasury _operationalTreasury,
         IPositionManagerERC20 _assetExchangerUSDCetoUSDC,
-        IERC721 _hegicPositionManager
+        address _marginAccount
     ) {
         hegicReturnToken = _hegicReturnToken;
         operationalTreasury = _operationalTreasury;
         assetExchangerUSDCetoUSDC = _assetExchangerUSDCetoUSDC;
         hegicPositionManager = _hegicPositionManager;
+        marginAccount = _marginAccount;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTIONS //
 
-    function liquidate(uint[] memory value) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
+    function liquidate(uint[] memory value, address holder) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
         for (uint i; i < value.length; i++) {
-            uint profit = getOptionValue(value[i]);
-            hegicPositionManager.transferFrom(portfolioLending, address(this), value[i]);
-            operationalTreasury.payOff(value[i], address(this));
-            hegicReturnToken.approve(address(assetExchangerUSDCetoUSDC), profit);
-            amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, 0);
+            if (getPayOffAmount(value[i]) > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
+                uint profit = getOptionValue(value[i]);
+                hegicPositionManager.transferFrom(marginAccount, address(this), value[i]);
+                operationalTreasury.payOff(value[i], marginAccount);
+                amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, 0);
+                hegicPositionManager.transferFrom(address(this), holder, value[i]);
+            }
         }
+    }
+
+    function exercise(uint id) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
+        require(getPayOffAmount(id) > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp, "The option is not active or there is no profit on it");
+        uint profit = getOptionValue(id);
+        hegicPositionManager.transferFrom(marginAccount, address(this), id);
+        operationalTreasury.payOff(id, marginAccount);
+        amountOut = assetExchangerUSDCetoUSDC.swapInput(profit, 0);
+        hegicPositionManager.transferFrom(address(this), marginAccount, id);
     }
 
     // EXTERNAL FUNCTIONS //
 
     function checkValidityERC721(uint id) external returns(bool) {
-        (IOperationalTreasury.LockedLiquidityState state, , , , ) = operationalTreasury.lockedLiquidity(id);
-        return state == IOperationalTreasury.LockedLiquidityState.Locked;
+        if (getPayOffAmount(id) > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp) {
+            return true;
+        }
     }
 
     // PUBLIC FUNCTIONS //
 
     function getOptionValue(uint id) public returns (uint positionValue) {
-        uint profit = getPayOffAmount(id);
-        positionValue += assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+        if (isOptionActive(id) && getExpirationTime(id) > block.timestamp) {
+            uint profit = getPayOffAmount(id);
+            positionValue = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+        }
     }
 
     function getPositionValue(uint[] memory value) public returns (uint positionValue) {
         for (uint i; i < value.length; i++) {
             positionValue += getOptionValue(value[i]);
         }
+    }
+
+    function getExpirationTime(uint256 tokenId) public view returns (uint256) {
+        (, , , , uint32 expiration) = operationalTreasury.lockedLiquidity(tokenId);
+        return uint256(expiration);
+    }
+
+    function isOptionActive(uint id) public view returns(bool) {
+        (IOperationalTreasury.LockedLiquidityState state, , , , ) = operationalTreasury.lockedLiquidity(id);
+        return state == IOperationalTreasury.LockedLiquidityState.Locked;
     }
 
     // PRIVATE FUNCTIONS //

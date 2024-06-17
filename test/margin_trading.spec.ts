@@ -444,7 +444,23 @@ describe("margin_trading.spec.ts", function () {
       ).to.be.greaterThan(
         await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       )
+
+      await c.USDC_LiquidityPool.setInsuranceRateMultiplier(0)
+      await c.WETH_LiquidityPool.setInsuranceRateMultiplier(0)
+      await c.WBTC_LiquidityPool.setInsuranceRateMultiplier(0)
+
+      const WETHbalanceinsuranceBefore = await c.WETH.balanceOf(await c.insurance.getAddress())
+      const MarginAccountValue = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
+      const WETHdebt = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) * parseUnits("4000", await c.USDC.decimals())/parseUnits("1", await c.WETH.decimals())
+      const WBTCdebt = await c.WBTC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) * parseUnits("50000", await c.USDC.decimals())/parseUnits("1", await c.WBTC.decimals())
+      const USDCdebt = await c.USDC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1)
+      const DebtWithAccruedInterest = WETHdebt+WBTCdebt+USDCdebt
+      const diff = DebtWithAccruedInterest-MarginAccountValue
+
       await c.MarginTrading.liquidate(marginAccountID)
+      const WETHbalanceinsuranceAfter = await c.WETH.balanceOf(await c.insurance.getAddress())
+      expect((WETHbalanceinsuranceBefore-WETHbalanceinsuranceAfter)*parseUnits("4000", 6)/parseUnits("1", 18)).to.be.eq(diff)
+
       expect(
         await c.MarginTrading.calculateDebtWithAccruedInterest.staticCall(marginAccountID)
       ).to.be.eq(BigInt(0))
@@ -476,6 +492,28 @@ describe("margin_trading.spec.ts", function () {
         c.MarginTrading.connect(c.signers[1]).setYellowCoeff(newYellowCoef)
       ).to.be.revertedWith("AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08") 
       expect(await c.MarginTrading.yellowCoeff()).to.eq(newYellowCoef)
+    })
+  })
+
+  describe("Exercise", async () => {
+    let optionId: bigint
+    let marginAccountID: bigint
+
+    beforeEach("provideERC721", async () => {
+      await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
+      optionId = BigInt(0)
+      marginAccountID = BigInt(0)
+      await c.MarginTrading.connect(c.deployer).provideERC721(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
+    });
+
+    it("exercise", async () => {
+      const marginAccountValue = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
+      expect(await c.MarginAccount.getErc20ByContract(marginAccountID, c.USDC.getAddress())).to.be.eq(BigInt(0))
+      expect(await c.MarginAccount.getErc721ByContract(marginAccountID, c.HegicPositionsManager.getAddress())).to.be.eql([BigInt(0)])
+      await c.MarginTrading.connect(c.deployer).exercise(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
+      expect(await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)).to.be.eq(marginAccountValue)
+      expect(await c.MarginAccount.getErc20ByContract(marginAccountID, c.USDC.getAddress())).to.be.eq(marginAccountValue)
+      expect(await c.MarginAccount.getErc721ByContract(marginAccountID, c.HegicPositionsManager.getAddress())).to.be.eql([])
     })
   })
   

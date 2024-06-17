@@ -222,11 +222,12 @@ interface IMarginAccount {
     function repay(uint marginAccountID, address token, uint amount) external;
 
     /**
-     * @dev Liquidates a margin account, closing all positions and repaying debts.
-     * @param marginAccountID The ID of the margin account.
-     * @param baseToken The base token address.
-     */    
-    function liquidate(uint marginAccountID, address baseToken) external;
+     * @dev Liquidates the assets in a margin account. 
+     * @param marginAccountID The ID of the margin account to be liquidated.
+     * @param baseToken The address of the base ERC20 token used for liquidation.
+     * @param marginAccountOwner The address of the owner of the margin account.
+     */
+    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner) external;
 
     /**
      * @dev Swaps tokens using the modular swap router.
@@ -238,6 +239,16 @@ interface IMarginAccount {
      * @param amountOutMinimum The minimum amount of output tokens expected.
      */    
     function swap(uint marginAccountID, uint swapID, address tokenIn, address tokenOut, uint amountIn, uint amountOutMinimum) external;
+
+    /**
+     * @notice This function allows exercising a position for a given ERC721 token, converting it into the base token.
+     * @param marginAccountID The ID of the margin account.
+     * @param erc721Token The address of the ERC721 token to be exercised.
+     * @param baseToken The address of the base token to be received.
+     * @param id The ID of the ERC721 token to be exercised.
+     * @param sender The address to which the ERC721 token will be transferred after exercise.
+     */
+    function exercise(uint marginAccountID, address erc721Token, address baseToken, uint id, address sender) external;
 
     // EVENTS //
 

@@ -35,6 +35,7 @@ export interface PreparationResult {
     WBTC: MockERC20;
     signers: Signer[];
     deployer: Signer;
+    insurance: Signer;
 }
 
 export async function preparationContracts():  Promise<PreparationResult> {
@@ -57,6 +58,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     let WBTC: MockERC20
     let signers: Signer[]
     let deployer: Signer
+    let insurance: Signer
 
     await deployments.fixture(["hegic_module"])
     MarginTrading = await ethers.getContract("MarginTrading")
@@ -71,6 +73,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     WBTC = await ethers.getContract("WBTC")
     signers = await ethers.getSigners()
     deployer = signers[0]
+    insurance = signers[5]
 
     // mint tokens //
     let WETHmintAmount = parseUnits("100", await WETH.decimals())
@@ -91,14 +94,14 @@ export async function preparationContracts():  Promise<PreparationResult> {
     WBTCmintAmount = WBTCmintAmount*BigInt(10)
     USDCmintAmount = USDCmintAmount*BigInt(10)
 
-    await WETH.connect(signers[5]).mint(WETHmintAmount)
-    await WETH.connect(signers[5]).approve(await MarginAccount.getAddress(), WETHmintAmount)
+    await WETH.connect(insurance).mint(WETHmintAmount)
+    await WETH.connect(insurance).approve(await MarginAccount.getAddress(), WETHmintAmount)
 
-    await WBTC.connect(signers[5]).mint(WBTCmintAmount)
-    await WBTC.connect(signers[5]).approve(await MarginAccount.getAddress(), WBTCmintAmount)
+    await WBTC.connect(insurance).mint(WBTCmintAmount)
+    await WBTC.connect(insurance).approve(await MarginAccount.getAddress(), WBTCmintAmount)
 
-    await USDC.connect(signers[5]).mint(USDCmintAmount)
-    await USDC.connect(signers[5]).approve(await MarginAccount.getAddress(), USDCmintAmount)
+    await USDC.connect(insurance).mint(USDCmintAmount)
+    await USDC.connect(insurance).approve(await MarginAccount.getAddress(), USDCmintAmount)
 
     // preparation SwapRouter // 
 
@@ -132,6 +135,8 @@ export async function preparationContracts():  Promise<PreparationResult> {
     MockOperationalTreasury = await ethers.getContract("OperationalTreasury")
     HegicPositionsManager = await ethers.getContract("HegicPositionsManager")
 
+    await USDCe.connect(deployer).mintTo(await MockOperationalTreasury.getAddress(), WETHmintAmount*BigInt(10))
+
     const optionProfit = parseUnits("100", await USDCe.decimals())
     const oneWeek = 60*60*24*7
     const optionId = 0
@@ -164,5 +169,6 @@ export async function preparationContracts():  Promise<PreparationResult> {
         WBTC: WBTC,
         signers: signers,
         deployer: deployer,
+        insurance: insurance
     };
 }

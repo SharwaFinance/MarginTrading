@@ -109,6 +109,14 @@ interface IMarginTrading {
      */
     function swap(uint marginAccountID, address tokenIn, address tokenOut, uint amountIn, uint amountOutMinimum) external;
 
+    /**
+     * @notice This function allows the owner or approved user of a margin account to exercise a collateral position.
+     * @param marginAccountID The ID of the margin account.
+     * @param token The address of the collateral token to be exercised.
+     * @param collateralTokenID The ID of the collateral token to be exercised.
+     */
+    function exercise(uint marginAccountID, address token, uint collateralTokenID) external;
+
     // EXTERNAL FUNCTIONS //
 
     /**
@@ -249,5 +257,17 @@ interface IMarginTrading {
      */
     event Liquidate(uint indexed marginAccountID);
 
-
+    /**
+     * @dev Emitted when a collateral position is exercised in a margin account.
+     * @param marginAccountID The ID of the margin account where the exercise occurred.
+     * @param tokenIn The address of the collateral token being exercised.
+     * @param tokenOut The address of the base token received in exchange.
+     * @param value The value of the collateral token being exercised.
+     */
+    event Exercise(
+        uint indexed marginAccountID, 
+        address tokenIn, 
+        address tokenOut, 
+        uint value
+    );
 }

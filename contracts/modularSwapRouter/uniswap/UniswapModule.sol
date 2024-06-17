@@ -6,6 +6,7 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+
 /**
  * @title UniswapModule
  * @dev A module for managing token swaps and liquidity positions using Uniswap.
@@ -17,7 +18,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant MODULAR_SWAP_ROUTER_ROLE = keccak256("MODULAR_SWAP_ROUTER_ROLE");
 
-    address public portfolioLendingStorage;
+    address public marginAccount;
 
     bytes public uniswapPath;
 
@@ -27,16 +28,15 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
     ISwapRouter public swapRouter;
     IQuoter public quoter;
 
-
     constructor(
-        address _portfolioLendingStorage,
+        address _marginAccount,
         address _tokenInContract,
         address _tokenOutContract,
         ISwapRouter _swapRouter,
         IQuoter _quoter,
         bytes memory _uniswapPath
     ) {
-        portfolioLendingStorage = _portfolioLendingStorage;
+        marginAccount = _marginAccount;
         tokenInContract = _tokenInContract;
         tokenOutContract = _tokenOutContract;
         swapRouter = _swapRouter;
@@ -83,34 +83,35 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTION //
 
     function liquidate(uint256 amountIn) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
-        IERC20(tokenInContract).transferFrom(portfolioLendingStorage, address(this), amountIn);
+
+        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
 
         amountOut = swapRouter.exactInput(params);
-        IERC20(tokenOutContract).transfer(portfolioLendingStorage, amountOut);
+        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     function swapInput(uint amountIn, uint amountOutMinimum) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
-        IERC20(tokenInContract).transferFrom(portfolioLendingStorage, address(this), amountIn);
+        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
         params.amountOutMinimum = amountOutMinimum;
 
         amountOut = swapRouter.exactInput(params);
 
-        IERC20(tokenOutContract).transfer(portfolioLendingStorage, amountOut);
+        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     function swapOutput(uint amountOut) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountIn) {
         ISwapRouter.ExactOutputParams memory params = _preparationOutputParams(amountOut);
 
         amountIn = getOutputPositionValue(amountOut);
-        IERC20(tokenInContract).transferFrom(portfolioLendingStorage, address(this), amountIn);
+        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         swapRouter.exactOutput(params);
 
-        IERC20(tokenOutContract).transfer(portfolioLendingStorage, amountOut);
+        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     // PRIVATE FUNCTION //

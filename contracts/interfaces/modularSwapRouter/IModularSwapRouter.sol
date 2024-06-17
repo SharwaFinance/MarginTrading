@@ -1,20 +1,30 @@
 pragma solidity 0.8.20;
 
 interface IModularSwapRouter {
-    struct ModuleData {
-        address tokenIn;
-        address tokenOut;
-    }
 
+    /**
+     * @dev Struct to hold information about an ERC20 position.
+     * @param tokenIn The address of the ERC20 token being deposited.
+     * @param tokenOut The address of the ERC20 token to be received.
+     * @param value The amount of `tokenIn` to be deposited.
+     */
     struct ERC20PositionInfo {
         address tokenIn;
         address tokenOut;
         uint256 value;
     }
 
+    /**
+     * @dev Struct to hold information about an ERC721 position.
+     * @param tokenIn The address of the ERC721 token being deposited.
+     * @param tokenOut The address of the ERC20 token to be received.
+     * @param holder The address of the current holder of the ERC721 token.
+     * @param value An array of token IDs of the ERC721 tokens being deposited.
+     */
     struct ERC721PositionInfo {
         address tokenIn;
         address tokenOut;
+        address holder;
         uint256[] value;
     }
 
@@ -119,4 +129,13 @@ interface IModularSwapRouter {
      * @return amountIn The input amount required for the swap.
      */
     function swapOutput(address tokenIn, address tokenOut, uint amountOut) external returns(uint amountIn);
+
+    /**
+     * @dev Executes the exercise of an ERC721 token. 
+     * @param tokenIn The address of the input ERC721 token.
+     * @param tokenOut The address of the output ERC20 token.
+     * @param id The ID of the ERC721 token being exercised.
+     * @return amountOut The amount of ERC20 token received after exercising the ERC721 token.
+     */
+    function exercise(address tokenIn, address tokenOut, uint id) external returns(uint amountOut);
 }

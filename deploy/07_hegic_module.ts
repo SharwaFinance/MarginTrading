@@ -1,5 +1,5 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types"
-import {solidityPacked, keccak256, toUtf8Bytes} from "ethers"
+import {solidityPacked, keccak256, toUtf8Bytes, MaxUint256} from "ethers"
 
 async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const {deployments, getNamedAccounts} = hre
@@ -36,9 +36,10 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     log: true,
     args: [
       USDCe.address,
+      HegicPositionsManager.address,
       OperationalTreasury.address,
       assetExchangerUSDCetoUSDC.address,
-      HegicPositionsManager.address
+      MarginAccount.address
     ],
   })
 
@@ -65,6 +66,21 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     "grantRole",
     MODULAR_SWAP_ROUTER_ROLE,
     ModularSwapRouter.address
+  )
+
+  await execute(
+    "USDCe_USDC_UniswapModule",
+    {log: true, from: deployer},
+    "allApprove"
+  )
+
+  await execute(
+    "MarginAccount",
+    {log: true, from: deployer},
+    "approveERC20",
+    USDCe.address, 
+    assetExchangerUSDCetoUSDC.address,
+    MaxUint256
   )
 }
 

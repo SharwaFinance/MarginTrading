@@ -98,7 +98,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
         for(uint i; i < availableErc721.length; i++) {
             uint[] memory erc721TokensByContract = erc721ByContract[marginAccountID][availableErc721[i]];
-            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, erc721TokensByContract);
+            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, address(0), erc721TokensByContract);
         }
     }
 
@@ -204,6 +204,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         
         require(amount <= erc20ByContract[marginAccountID][token], "Insufficient funds to repay the debt");
 
+
         uint debtWithAccruedInterest = ILiquidityPool(liquifityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
         if (amount == 0 || amount > debtWithAccruedInterest) {
             amount = debtWithAccruedInterest;
@@ -213,7 +214,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         ILiquidityPool(liquifityPoolAddress).repay(marginAccountID, amount);
     }
 
-    function liquidate(uint marginAccountID, address baseToken) external onlyRole(MARGIN_TRADING_ROLE) {
+    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner) external onlyRole(MARGIN_TRADING_ROLE) {
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableErc20.length); 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params = new IModularSwapRouter.ERC721PositionInfo[](availableErc721.length);
 
@@ -225,7 +226,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
         for(uint i; i < availableErc721.length; i++) {
             uint[] memory erc721TokensByContract = erc721ByContract[marginAccountID][availableErc721[i]];
-            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, erc721TokensByContract);
+            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, marginAccountOwner, erc721TokensByContract);
             delete erc721ByContract[marginAccountID][availableErc721[i]];
         }
 
@@ -244,6 +245,14 @@ contract MarginAccount is IMarginAccount, AccessControl {
         erc20ByContract[marginAccountID][tokenOut] += amountOut;
 
         emit Swap(swapID, tokenIn, tokenOut, marginAccountID, amountIn, amountOut);
+    }
+
+    function exercise(uint marginAccountID, address erc721Token, address baseToken, uint id, address sender) external onlyRole(MARGIN_TRADING_ROLE){ 
+        require(isAvailableErc721[erc721Token] && isAvailableErc20[baseToken], "Token is not available");
+        uint amountOut = modularSwapRouter.exercise(erc721Token, baseToken, id);
+        _deleteERC721TokenFromContractList(marginAccountID, erc721Token, id);
+        erc20ByContract[marginAccountID][baseToken] += amountOut;
+        IERC721(erc721Token).transferFrom(address(this), sender, id);
     }
 
     // PRIVATE FUNCTIONS //

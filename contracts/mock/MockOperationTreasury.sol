@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import {IOperationalTreasury} from "../interfaces/modularSwapRouter/hegic/IOperationalTreasury.sol";
 import {IHegicStrategy} from "../interfaces/modularSwapRouter/hegic/IHegicStrategy.sol";
-import { IOperationalTreasury } from "../interfaces/modularSwapRouter/hegic/IOperationalTreasury.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockOperationalTreasury is IOperationalTreasury {
     struct LockedLiquidity {
@@ -13,16 +14,32 @@ contract MockOperationalTreasury is IOperationalTreasury {
     }
 
     IHegicStrategy public theOnlyStrategy;
+    ERC20 public usdcE;
 
     mapping(uint256 => LockedLiquidity) public lockedLiquidityData;
 
     constructor(
-        IHegicStrategy _theOnlyStrategy
+        IHegicStrategy _theOnlyStrategy,
+        address _usdcE
     ) {
         theOnlyStrategy = _theOnlyStrategy;
+        usdcE = ERC20(_usdcE);
     }
 
-    function payOff(uint256 positionID, address account) external override {}
+    function payOff(uint256 positionID, address account) external override {
+        LockedLiquidity storage ll = lockedLiquidityData[positionID];
+        uint256 amount = theOnlyStrategy.payOffAmount(positionID);
+        require(
+            ll.expiration > block.timestamp,
+            "The option has already expired"
+        );
+        require(
+            ll.state == LockedLiquidityState.Locked,
+            "The liquidity has already been unlocked"
+        );
+        usdcE.transfer(account, amount);
+        ll.state = LockedLiquidityState.Unlocked;
+    }
 
     function lockedLiquidity(uint256 id)
         external

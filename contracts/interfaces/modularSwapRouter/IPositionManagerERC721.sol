@@ -5,12 +5,19 @@ interface IPositionManagerERC721 {
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTIONS //
 
     /**
-     * @notice Executes the liquidation of specified Hegic options.
-     * @dev This function can only be called by an account with the MODULAR_SWAP_ROUTER_ROLE.
-     * @param value An array of option IDs to liquidate.
-     * @return amountOut The total amount of tokens received from liquidation.
+     * @dev Liquidates multiple positions. 
+     * @param value An array of position IDs to be liquidated.
+     * @param holder The address of the account to transfer the positions to after liquidation.
+     * @return amountOut The total amount of profit received from the liquidation in USDC.
      */
-    function liquidate(uint256[] memory value) external returns(uint amountOut);
+    function liquidate(uint256[] memory value, address holder) external returns(uint amountOut);
+
+    /**
+     * @dev Executes the exercise of an option.
+     * @param id The ID of the option being exercised.
+     * @return amountOut The amount of base token received after exercising the option.
+     */
+    function exercise(uint id) external returns(uint amountOut);
 
     // EXTERNAL FUNCTIONS //
 

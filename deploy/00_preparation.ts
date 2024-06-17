@@ -65,7 +65,8 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
             from: deployer,
             log: true,
             args: [
-                MockHegicStrategy.address
+                MockHegicStrategy.address,
+                USDCe.address
             ],
         })
 

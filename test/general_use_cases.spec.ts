@@ -14,6 +14,9 @@ import {
 } from "../typechain-types";
 import { Signer, parseUnits, ZeroAddress } from "ethers";
 import { MockERC20 } from "../typechain-types";
+import { calculateMarginRatio } from "../utils/calculation";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
+
 
 describe("general_use_cases.ts", function () {
   let weth_liquidity_pool: LiquidityPool
@@ -243,6 +246,94 @@ describe("general_use_cases.ts", function () {
       margin_trading.connect(User_1).provideERC721(margin_account_0, await HegicPositionsManager, optionId)
     ).to.be.revertedWith("Transfer not approved") 
   })
+
+  it.skip("Should correctly split USDC between the liquidity pool and the insurance pool", async () => {
+    const margin_account_id_0 = 0
+
+    const amount_to_withdraw = parseUnits("500", 6)
+    await margin_trading.connect(User_1).withdrawERC20(margin_account_id_0, USDC, amount_to_withdraw)
+
+    const usdc_interest_rate = parseUnits("10",2)
+    const weth_interest_rate = parseUnits("10",2)
+    const wbtc_interest_rate = parseUnits("10",2)
+
+    await usdc_liquidity_pool.connect(deployer).setInterestRate(usdc_interest_rate)
+    await weth_liquidity_pool.connect(deployer).setInterestRate(weth_interest_rate)
+    await wbtc_liquidity_pool.connect(deployer).setInterestRate(wbtc_interest_rate)
+
+    const usdc_to_liquidity_pool = parseUnits("100000", 6)
+    const weth_to_liquidity_pool = parseUnits("10", 18)
+    const wbtc_to_liquidity_pool = parseUnits("1", 8)
+
+    await USDC.connect(deployer).mint(usdc_to_liquidity_pool)
+    await WETH.connect(deployer).mint(weth_to_liquidity_pool)
+    await WBTC.connect(deployer).mint(wbtc_to_liquidity_pool)
+
+    await USDC.connect(deployer).approve(usdc_liquidity_pool, ethers.MaxUint256)
+    await WETH.connect(deployer).approve(weth_liquidity_pool, ethers.MaxUint256)
+    await WBTC.connect(deployer).approve(wbtc_liquidity_pool, ethers.MaxUint256)
+
+    const usdc_insurance_rate_multiplier = parseUnits("20",3)
+    const weth_insurance_rate_multiplier = parseUnits("20",3)
+    const wbtc_insurance_rate_multiplier = parseUnits("20",3)
+
+    await usdc_liquidity_pool.connect(deployer).setInsuranceRateMultiplier(usdc_insurance_rate_multiplier)
+    await usdc_liquidity_pool.connect(deployer).setInsuranceRateMultiplier(weth_insurance_rate_multiplier)
+    await usdc_liquidity_pool.connect(deployer).setInsuranceRateMultiplier(wbtc_insurance_rate_multiplier)
+
+    await usdc_liquidity_pool.connect(deployer).provide(usdc_to_liquidity_pool)
+    await weth_liquidity_pool.connect(deployer).provide(weth_to_liquidity_pool)
+    await wbtc_liquidity_pool.connect(deployer).provide(wbtc_to_liquidity_pool)
+
+    const weth_price_1 = parseUnits("4000", await USDC.decimals())
+    await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
+
+    const collateral = parseUnits("60000", 6)
+    await USDC.connect(User_1).mint(collateral)
+    await USDC.connect(User_1).approve(margin_account, ethers.MaxUint256)
+    await margin_trading.connect(User_1).provideERC20(margin_account_id_0, USDC, collateral)
+
+    const usdc_borrow_amount = parseUnits("100000", await USDC.decimals()) 
+    await margin_trading.connect(User_1).borrow(margin_account_id_0, USDC, usdc_borrow_amount)
+
+    const weth_borrow_amount = parseUnits("1.5", await WETH.decimals())
+    await margin_trading.connect(User_1).borrow(margin_account_id_0, WETH, weth_borrow_amount)
+
+    const wbtc_borrow_amount = parseUnits("1.5", await WBTC.decimals())
+    await margin_trading.connect(User_1).borrow(margin_account_id_0, WBTC, wbtc_borrow_amount)
+
+    await margin_trading.connect(User_1).swap(margin_account_id_0, await USDC, await WETH, usdc_borrow_amount, 0)
+    await time.increase(31536000) //increase time to 1yr
+
+    const weth_price_2 = parseUnits("2700", await USDC.decimals())
+    await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_2)
+
+    const wbtc_price_1 = parseUnits("60000", await USDC.decimals())
+    await QuoterMock.setSwapPrice(await WBTC.getAddress(), await USDC.getAddress(), wbtc_price_1)
+
+    const accountValue = await margin_trading.calculateMarginAccountValue.staticCall(margin_account_id_0)
+
+    const wethDebt = await weth_liquidity_pool.getDebtWithAccruedInterest(margin_account_id_0)
+    const wbtcDebt = await wbtc_liquidity_pool.getDebtWithAccruedInterest(margin_account_id_0)
+    const usdcDebt = await usdc_liquidity_pool.getDebtWithAccruedInterest(margin_account_id_0)
+    const usdcPrice = parseUnits("1", 0)
+
+    const expected_margin_ratio = calculateMarginRatio(
+      accountValue,
+      wethDebt,
+      weth_price_2,
+      wbtcDebt,
+      wbtc_price_1,
+      usdcDebt,
+      usdcPrice
+    )
+
+    // console.log(expected_margin_ratio)
+
+    const margin_ratio_from_contract = await margin_trading.getMarginAccountRatio.staticCall(margin_account_id_0)
+    await expect(margin_ratio_from_contract).to.be.eq(expected_margin_ratio)
+
+  });
 })
 
 

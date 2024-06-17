@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ILiquidityPool} from"./interfaces/ILiquidityPool.sol";
 import {UD60x18, ud, convert, intoUint256, pow, div} from "@prb/math/src/UD60x18.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title LiquidityPool
@@ -13,7 +14,7 @@ import {UD60x18, ud, convert, intoUint256, pow, div} from "@prb/math/src/UD60x18
  * @notice Users can deposit tokens to earn interest and borrow against their deposits.
  * @author 0nika0
  */
-contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool {
+contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, ReentrancyGuard {
     uint private constant ONE_YEAR_SECONDS = 31536000;
     uint private constant INTEREST_RATE_COEFFICIENT = 1e4;
     bytes32 public constant MARGIN_ACCOUNT_ROLE = keccak256("MARGIN_ACCOUNT_ROLE");
@@ -93,7 +94,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool {
 
     // EXTERNAL FUNCTIONS //
 
-    function provide(uint amount) external {
+    function provide(uint amount) external nonReentrant {
         uint totalLiquidity = getTotalLiquidity();
         require(
             totalLiquidity + amount <= maximumPoolCapacity,
@@ -109,7 +110,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool {
         emit Provide(msg.sender, shareChange, amount);
     }
 
-    function withdraw(uint amount) external {
+    function withdraw(uint amount) external nonReentrant {
         uint totalLiquidity = poolToken.balanceOf(address(this)) + netDebt;
         require(totalLiquidity != 0, "Liquidity pool has no pool tokens");
         uint amountWithdraw = (amount * totalLiquidity) / depositShare;
@@ -174,10 +175,10 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool {
             netDebt -= portfolioIdToDebt[marginAccountID];
             portfolioIdToDebt[marginAccountID] = 0;
         }
+        poolToken.transferFrom(msg.sender, address(this), amount);
         if (profitInsurancePool > 0) {
             poolToken.transfer(insurancePool, profitInsurancePool);
         }
-        poolToken.transferFrom(msg.sender, address(this), amount);
 
         emit Repay(marginAccountID, amount, profit);
     }
