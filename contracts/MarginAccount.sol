@@ -279,6 +279,8 @@ contract MarginAccount is IMarginAccount, AccessControl {
                 return;
             }
         }
+
+        require(false, "id not found");
     }
 
     /**
