@@ -44,8 +44,8 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
 
     function liquidate(uint[] memory value, address holder) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
         for (uint i; i < value.length; i++) {
+            uint profit = getPayOffAmount(value[i]);
             if (getPayOffAmount(value[i]) > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
-                uint profit = getOptionValue(value[i]);
                 hegicPositionManager.transferFrom(marginAccount, address(this), value[i]);
                 operationalTreasury.payOff(value[i], marginAccount);
                 amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, 0);
@@ -55,8 +55,8 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
     }
 
     function exercise(uint id) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
-        require(getPayOffAmount(id) > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp, "The option is not active or there is no profit on it");
-        uint profit = getOptionValue(id);
+        uint profit = getPayOffAmount(id);
+        require(profit > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp, "The option is not active or there is no profit on it");
         hegicPositionManager.transferFrom(marginAccount, address(this), id);
         operationalTreasury.payOff(id, marginAccount);
         amountOut = assetExchangerUSDCetoUSDC.swapInput(profit, 0);
