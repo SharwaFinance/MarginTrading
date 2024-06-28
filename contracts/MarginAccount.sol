@@ -293,6 +293,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
                 uint amountInUSDC = modularSwapRouter.calculateAmountInERC20(baseToken, availableTokenToLiquidityPool[i], poolDebt);
                 uint userUSDCbalance = getErc20ByContract(marginAccountID, baseToken);
                 if (amountInUSDC > userUSDCbalance) {
+                    // calculate amountOutMinimum
                     uint amountOutMinimum = modularSwapRouter.calculateAmountOutERC20(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance);
                     uint amountOut = modularSwapRouter.swapInput(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance, amountOutMinimum);
                     erc20ByContract[marginAccountID][baseToken] -= userUSDCbalance;
