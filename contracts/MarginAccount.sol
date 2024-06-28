@@ -166,6 +166,10 @@ contract MarginAccount is IMarginAccount, AccessControl {
         IERC20(token).approve(to, amount);
     }
 
+    function approveERC721ForAll(address token, address to, bool value) external onlyRole(MANAGER_ROLE) {
+        IERC721(token).setApprovalForAll(to, value);
+    }
+
     // ONLY MARGIN_TRADING_ROLE FUNCTIONS //
 
     function provideERC20(uint marginAccountID, address txSender, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
@@ -179,7 +183,6 @@ contract MarginAccount is IMarginAccount, AccessControl {
         require(erc721ByContract[marginAccountID][token].length <= erc721Limit, "erc721limit is exceeded");
         erc721ByContract[marginAccountID][token].push(collateralTokenID);
         IERC721(token).transferFrom(txSender, address(this), collateralTokenID);
-        IERC721(token).approve(modularSwapRouter.getModuleAddress(token, baseToken), collateralTokenID);
     }
 
     function withdrawERC20(uint marginAccountID, address token, uint amount, address txSender) external onlyRole(MARGIN_TRADING_ROLE) {
