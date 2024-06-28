@@ -114,7 +114,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
     }
 
     function withdraw(uint amount) external nonReentrant {
-        uint totalLiquidity = poolToken.balanceOf(address(this)) + netDebt;
+        uint totalLiquidity = getTotalLiquidity();
         require(totalLiquidity != 0, "Liquidity pool has no pool tokens");
         uint amountWithdraw = (amount * totalLiquidity) / depositShare;
         require(
