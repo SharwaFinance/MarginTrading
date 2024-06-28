@@ -32,10 +32,13 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
     uint public netDebt;
     uint public totalInterestSnapshot;
     uint public maximumPoolCapacity;
+    uint public blockNumberDelay = 1;
 
     mapping(uint => uint) public portfolioIdToDebt;
 
     mapping(uint => uint) public shareOfDebt;
+
+    mapping(uint => uint) public borrowingBlockNumber;
 
     address public insurancePool;
 
@@ -73,6 +76,10 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         maximumBorrowMultiplier = newMaximumBorrowMultiplier;
 
         emit UpdateMaximumBorrowMultiplier(newMaximumBorrowMultiplier);
+    }
+
+    function setBlockNumberDelay(uint newBlockNumberDelay) external onlyRole(MANAGER_ROLE) {
+        blockNumberDelay = newBlockNumberDelay;
     }
 
     function setInsurancePool(address newInsurancePool) external onlyRole(MANAGER_ROLE) {
@@ -156,10 +163,16 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         portfolioIdToDebt[marginAccountID] += amount;
         poolToken.transfer(msg.sender, amount);
 
+        borrowingBlockNumber[marginAccountID] = block.number;
+
         emit Borrow(marginAccountID, amount);
     }
 
     function repay(uint marginAccountID, uint amount) external onlyRole(MARGIN_ACCOUNT_ROLE) {
+        require(
+           borrowingBlockNumber[marginAccountID] + blockNumberDelay <= block.number,
+            "The block number has not reached a value that allows to repay loan!"
+        );
         uint newTotalBorrows = totalBorrows();
         uint newTotalInterestSnapshot = newTotalBorrows - netDebt;
         uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only
