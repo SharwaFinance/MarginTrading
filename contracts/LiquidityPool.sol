@@ -168,7 +168,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             // If you try to return more tokens than were borrowed, the required amount will be taken to repay the debt, the rest will remain untouched
             amount = debt;
         }
-        uint shareChange = (amount * debtSharesSum) / newTotalBorrows; // Trader's share to be given away
+        uint shareChange = debtSharesSum.mulDiv(amount, newTotalBorrows, Math.Rounding.Up); // Trader's share to be given away
         uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID];
         uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT;
         totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum;
