@@ -142,6 +142,51 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     MaxUint256
   )
 
+  await execute(
+    "USDC",
+    {log: true, from: deployer},
+    "approve",
+    USDC_LiquidityPool.address,
+    parseUnits("10", 6)
+  )
+
+  await execute(
+    "USDC_LiquidityPool",
+    {log: true, from: deployer},
+    "provide",
+    parseUnits("10", 6)
+  )
+
+  await execute(
+    "WETH",
+    {log: true, from: deployer},
+    "approve",
+    WETH_LiquidityPool.address,
+    parseUnits("0.01", 18)
+  )
+
+  await execute(
+    "WETH_LiquidityPool",
+    {log: true, from: deployer},
+    "provide",
+    parseUnits("0.01", 18)
+  )
+
+  await execute(
+    "WBTC",
+    {log: true, from: deployer},
+    "approve",
+    WBTC_LiquidityPool.address,
+    parseUnits("0.001", 8)
+  )
+
+  await execute(
+    "WBTC_LiquidityPool",
+    {log: true, from: deployer},
+    "provide",
+    parseUnits("0.001", 8)
+  )  
+
 }
 
 deployment.tags = ["liquidity_pool"]
