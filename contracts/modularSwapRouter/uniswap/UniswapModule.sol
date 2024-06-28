@@ -124,6 +124,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
         ISwapRouter.ExactOutputParams memory params = _preparationOutputParams(amountOut);
 
         amountIn = getOutputPositionValue(amountOut);
+        params.amountInMaximum = amountIn;
         ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         swapRouter.exactOutput(params);
