@@ -43,6 +43,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         address _insurancePool
     ) {
         insurancePool = _insurancePool;
+        timelock = block.timestamp - 10;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -106,7 +107,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
     function lockFunction() external onlyRole(MANAGER_ROLE) {
         timelock = 0;
         emit Lock();
-    }    
+    }
 
     function setModularSwapRouter(IModularSwapRouter newModularSwapRouter) external onlyRole(MANAGER_ROLE) notLocked() {
         modularSwapRouter = newModularSwapRouter;
@@ -148,7 +149,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         isAvailableErc721[token] = value;
 
         emit UpdateIsAvailableErc721(token, value);
-    }
+    }   
 
     function setErc721Limit(uint newErc721Limit) external onlyRole(MANAGER_ROLE) {
         erc721Limit = newErc721Limit;
@@ -160,7 +161,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         liquidatorFee = newLiquidatorFee;
 
         emit UpdateLiquidatorFee(newLiquidatorFee);
-    }           
+    }   
 
     function approveERC20(address token, address to, uint amount) external onlyRole(MANAGER_ROLE) {
         IERC20(token).approve(to, amount);
@@ -178,7 +179,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         IERC20(token).transferFrom(txSender, address(this), amount);
     }
 
-    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID, address baseToken) external onlyRole(MARGIN_TRADING_ROLE) {
+    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID) external onlyRole(MARGIN_TRADING_ROLE) {
         require(isAvailableErc721[token], "Token you are attempting to deposit is not available for deposit");
         require(erc721ByContract[marginAccountID][token].length <= erc721Limit, "erc721limit is exceeded");
         erc721ByContract[marginAccountID][token].push(collateralTokenID);
@@ -196,7 +197,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
     }
 
     function borrow(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
-        require(isAvailableErc20[token], "Token is not available");
+        require(isAvailableErc20[token], "Token you are attempting to deposit is not available for deposit");
         address liquifityPoolAddress = tokenToLiquidityPool[token];       
         require(liquifityPoolAddress != address(0), "Token is not supported");
 
@@ -207,13 +208,12 @@ contract MarginAccount is IMarginAccount, AccessControl {
     function repay(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
         address liquifityPoolAddress = tokenToLiquidityPool[token];    
         require(liquifityPoolAddress != address(0), "Token is not supported");
-        
-
 
         uint debtWithAccruedInterest = ILiquidityPool(liquifityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
         if (amount == 0 || amount > debtWithAccruedInterest) {
             amount = debtWithAccruedInterest;
         }
+
         require(amount <= erc20ByContract[marginAccountID][token], "Insufficient funds to repay the debt");
         
         erc20ByContract[marginAccountID][token] -= amount;
@@ -296,7 +296,6 @@ contract MarginAccount is IMarginAccount, AccessControl {
                 uint amountInUSDC = modularSwapRouter.calculateAmountInERC20(baseToken, availableTokenToLiquidityPool[i], poolDebt);
                 uint userUSDCbalance = getErc20ByContract(marginAccountID, baseToken);
                 if (amountInUSDC > userUSDCbalance) {
-                    // calculate amountOutMinimum
                     uint amountOutMinimum = modularSwapRouter.calculateAmountOutERC20(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance);
                     uint amountOut = modularSwapRouter.swapInput(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance, amountOutMinimum);
                     erc20ByContract[marginAccountID][baseToken] -= userUSDCbalance;

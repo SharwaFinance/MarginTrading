@@ -185,7 +185,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     {log: true, from: deployer},
     "provide",
     parseUnits("0.001", 8)
-  )  
+  )
 
 }
 

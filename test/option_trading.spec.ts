@@ -11,6 +11,7 @@ import {
   ModularSwapRouter,
   QuoterMock,
   MarginAccountManager,
+  MockAggregatorV3
 } from "../typechain-types";
 import { Signer, parseUnits, ZeroAddress, BigNumberish } from "ethers";
 import { MockERC20 } from "../typechain-types";
@@ -32,6 +33,8 @@ describe("option_trading_spec.ts", function () {
   let SwapRouterMock: SwapRouterMock
   let ModularSwapRouter: ModularSwapRouter
   let QuoterMock: QuoterMock
+  let MockAggregatorV3_WETH_USDC: MockAggregatorV3
+  let MockAggregatorV3_WBTC_USDC: MockAggregatorV3
   let USDC: MockERC20
   let USDC_e: MockERC20
   let WETH: MockERC20
@@ -50,6 +53,8 @@ describe("option_trading_spec.ts", function () {
     margin_account_manager = await ethers.getContract("MarginAccountManager")
     ModularSwapRouter = await ethers.getContract("ModularSwapRouter")
     QuoterMock = await ethers.getContract("Quoter")
+    MockAggregatorV3_WETH_USDC = await ethers.getContract("MockAggregatorV3_WETH_USDC")
+    MockAggregatorV3_WBTC_USDC = await ethers.getContract("MockAggregatorV3_WBTC_USDC")
     USDC = await ethers.getContract("USDC")
     USDC_e = await ethers.getContract("USDCe")
     WETH = await ethers.getContract("WETH")
@@ -147,7 +152,7 @@ describe("option_trading_spec.ts", function () {
 
     const expected_account_value_1 = parseUnits("5500", 6)
 
-    await margin_trading.connect(User_1).provideERC721(margin_account_id_0, await HegicPositionsManager, option_id)
+    await margin_trading.connect(User_1).provideERC721(margin_account_id_0, await HegicPositionsManager.getAddress(), option_id)
     await expect(await margin_trading.calculateMarginAccountValue.staticCall(margin_account_id_0)).to.be.eq(expected_account_value_1)
 
     const option_0_payoff_1 = parseUnits("500", await USDC_e.decimals())
@@ -205,6 +210,7 @@ describe("option_trading_spec.ts", function () {
 
     const weth_price_0 = parseUnits("4000", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_0)
+    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
     await margin_trading.connect(User_1).borrow(margin_account_id_0, await USDC.getAddress(), usdc_borrow_amount )
     await margin_trading.connect(User_1).swap(margin_account_id_0, await USDC.getAddress(), await WETH.getAddress(), usdc_borrow_amount + collateral, amountOutMinimum)
@@ -221,6 +227,7 @@ describe("option_trading_spec.ts", function () {
 
     const weth_price_1 = parseUnits("3500", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
+    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
 
     await expect(margin_trading.connect(User_1).withdrawERC721(margin_account_id_0, HegicPositionsManager ,option_id_1)).to.be.revertedWith("portfolioRatio is too low")
 

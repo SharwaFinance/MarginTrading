@@ -36,6 +36,14 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   await execute(
     "MarginAccount",
     {log: true, from: deployer},
+    "grantRole",
+    MANAGER_ROLE,
+    deployer
+  )
+
+  await execute(
+    "MarginAccount",
+    {log: true, from: deployer},
     "setAvailableErc20",
     [USDC.address, WETH.address, WBTC.address], //_availableErc20
   )

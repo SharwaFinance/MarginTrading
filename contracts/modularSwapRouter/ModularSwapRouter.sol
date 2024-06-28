@@ -45,7 +45,7 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
             address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
             amountOut = IPositionManagerERC20(moduleAddress).getPositionValue(amountIn);
         }
-    }    
+    }
 
     function calculateAmountOutERC20(address tokenIn, address tokenOut, uint amountIn) external returns (uint amountOut) {
         address marginTradingBaseToken = marginTrading.BASE_TOKEN();

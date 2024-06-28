@@ -45,6 +45,12 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
                 Quoter.address
             ],
         })
+
+        await execute("USDC",{log: true, from: deployer}, "mint", parseUnits("10", 6))
+        await execute("WETH",{log: true, from: deployer}, "mint", parseUnits("0.01", 18))
+        await execute("WBTC",{log: true, from: deployer}, "mint", parseUnits("0.001", 8))
+
+
         await execute("Quoter",{log: true, from: deployer}, "setSwapPrice", WETH.address, USDC.address, parseUnits("4000", 6))
         await execute("Quoter",{log: true, from: deployer}, "setSwapPrice", WETH.address, WBTC.address, parseUnits("0.0666", 8))
         await execute("Quoter",{log: true, from: deployer}, "setSwapPrice", WBTC.address, USDC.address, parseUnits("60000", 6))
@@ -76,6 +82,9 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
             log: true,
             args: [],
         })
+
+        await deploy("MockAggregatorV3_WETH_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("4000", 8)]})
+        await deploy("MockAggregatorV3_WBTC_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("60000", 8)]})
 
     } else {
         save("USDCe", {

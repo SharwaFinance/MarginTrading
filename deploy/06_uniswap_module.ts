@@ -1,5 +1,5 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types"
-import {solidityPacked, MaxUint256, keccak256, toUtf8Bytes} from "ethers"
+import {solidityPacked, MaxUint256, keccak256, toUtf8Bytes, ZeroAddress} from "ethers"
 
 async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const {deployments, getNamedAccounts} = hre
@@ -13,6 +13,8 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const WETH = await get("WETH")
   const WBTC = await get("WBTC")
   const USDC = await get("USDC")
+  const AggregatorV3_WETH_USDC = await get("MockAggregatorV3_WETH_USDC")
+  const AggregatorV3_WBTC_USDC = await get("MockAggregatorV3_WBTC_USDC")
 
   const MODULAR_SWAP_ROUTER_ROLE = keccak256(toUtf8Bytes("MODULAR_SWAP_ROUTER_ROLE"));
   const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
@@ -24,15 +26,15 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   ]);
 
   const arrayParams = [
-    {"tokenIn": "WETH", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 3000, USDC.address])},
-    {"tokenIn": "WETH", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 3000, WBTC.address])},
-    {"tokenIn": "WBTC", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 3000, USDC.address])},
-    {"tokenIn": "WBTC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 3000, WETH.address])},
-    {"tokenIn": "USDC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 3000, WETH.address])},
-    {"tokenIn": "USDC", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 3000, WBTC.address])},
+    {"tokenIn": "WETH", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 3000, USDC.address]), "aggregatorV3": AggregatorV3_WETH_USDC.address},
+    {"tokenIn": "WETH", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 3000, WBTC.address]), "aggregatorV3": ZeroAddress},
+    {"tokenIn": "WBTC", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 3000, USDC.address]), "aggregatorV3": AggregatorV3_WBTC_USDC.address},
+    {"tokenIn": "WBTC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 3000, WETH.address]), "aggregatorV3": ZeroAddress},
+    {"tokenIn": "USDC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 3000, WETH.address]), "aggregatorV3": ZeroAddress},
+    {"tokenIn": "USDC", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 3000, WBTC.address]), "aggregatorV3": ZeroAddress},
   ]
 
-  async function deployUniswapModule(tokenIn: string, tokenOut: string, path: string) {
+  async function deployUniswapModule(tokenIn: string, tokenOut: string, path: string, aggregatorV3: string) {
     // console.log(`path ${tokenIn}_${tokenOut}`, path)
     const contractName = `${tokenIn}_${tokenOut}_UniswapModule`
     const module = await deploy(contractName, {
@@ -43,6 +45,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
         MarginAccount.address,
         contractsMap.get(tokenIn),
         contractsMap.get(tokenOut),
+        aggregatorV3,
         SwapRouter.address,
         Quoter.address,
         path
@@ -92,7 +95,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   }
 
   for (let item in arrayParams) { 
-    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].tokenOut, arrayParams[item].path)
+    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].tokenOut, arrayParams[item].path, arrayParams[item].aggregatorV3)
   }
 
 }

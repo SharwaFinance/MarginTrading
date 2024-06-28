@@ -49,6 +49,30 @@ interface IMarginTrading {
      */
     function getMarginAccountRatio(uint marginAccountID) external returns(uint);
 
+    /**
+     * @dev Prepares ERC20 and ERC721 token parameters for a given margin account.
+     * @param marginAccountID The ID of the margin account.
+     * @param baseToken The base token address.
+     * @return erc20Params The array of ERC20 position info.
+     * @return erc721Params The array of ERC721 position info.
+     */    
+    function preparationTokesParams(uint marginAccountID, address baseToken) external view returns (
+        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
+        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
+    );
+    
+    /**
+     * @dev Prepares ERC20 token parameters based on debt for a given margin account.
+     * @param marginAccountID The ID of the margin account.
+     * @param baseToken The base token address.
+     * @return erc20Params The array of ERC20 position info based on debt.
+     * @return erc721Params An empty array of ERC721 position info.
+     */    
+    function preparationTokesParamsByDebt(uint marginAccountID, address baseToken) external view returns (
+        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
+        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
+    );
+
     // ONLY APPROVE OR OWNER FUNCTIONS //
 
     /**
@@ -117,7 +141,7 @@ interface IMarginTrading {
      */
     function exercise(uint marginAccountID, address token, uint collateralTokenID) external;
 
-    // EXTERNAL FUNCTIONS //
+    // ONLY LIQUIDATOR_ROLE FUNCTIONS //
 
     /**
      * @notice Liquidates a margin account if the account ratio is below the red coefficient.
@@ -255,7 +279,10 @@ interface IMarginTrading {
      * @notice Emitted when a margin account is liquidated.
      * @param marginAccountID The ID of the margin account being liquidated.
      */
-    event Liquidate(uint indexed marginAccountID);
+    event Liquidate(
+        uint indexed marginAccountID,
+        address liquidator
+    );
 
     /**
      * @dev Emitted when a collateral position is exercised in a margin account.

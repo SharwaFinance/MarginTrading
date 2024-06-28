@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { parseUnits, ZeroAddress, keccak256, toUtf8Bytes } from "ethers";
+import { parseUnits, ZeroAddress, keccak256, toUtf8Bytes, MaxUint256 } from "ethers";
 import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
 
@@ -35,7 +35,7 @@ describe("margin_trading.spec.ts", function () {
     expect(await c.MarginAccountManager.isApprovedOrOwner(sig2address, tokenID)).to.be.eq(true)    
   })
 
-  it("test provideERC20 and withdrawERC20", async () => {
+  it("provideERC20 and withdrawERC20", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     let USDCprovideAmount = parseUnits("500", await c.USDC.decimals())
     await expect(
@@ -55,7 +55,7 @@ describe("margin_trading.spec.ts", function () {
     );
   });
   
-  it("test provideERC20: invalid marginAccountID", async () => {
+  it("provideERC20: invalid marginAccountID", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     let USDCprovideAmount = parseUnits("500", await c.USDC.decimals())
     await expect(
@@ -63,7 +63,7 @@ describe("margin_trading.spec.ts", function () {
     ).to.be.revertedWith("You are not the owner of the token") 
   })
 
-  it("test provideERC20: invalid token", async () => {
+  it("provideERC20: invalid token", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     let USDCprovideAmount = parseUnits("500", await c.USDC.decimals())
     await expect(
@@ -71,7 +71,7 @@ describe("margin_trading.spec.ts", function () {
     ).to.be.revertedWith("Token you are attempting to deposit is not available for deposit") 
   })
 
-  it("test provideERC20: invalid amount", async () => {
+  it("provideERC20: invalid amount", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     let USDCprovideAmount = parseUnits("500000000000000000", await c.USDC.decimals())
     await expect(
@@ -79,7 +79,7 @@ describe("margin_trading.spec.ts", function () {
     ).to.be.revertedWith("ERC20: insufficient allowance") 
   })
 
-  it("test provideERC721 and withdrawERC721", async () => {
+  it("provideERC721 and withdrawERC721", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     const tokenID = 0
     const optionID = 0
@@ -95,7 +95,7 @@ describe("margin_trading.spec.ts", function () {
     expect(await c.HegicPositionsManager.ownerOf(optionID)).to.be.eq(await c.deployer.getAddress())
   });
 
-  it("test provideERC721: invalid marginAccountID", async () => {
+  it("provideERC721: invalid marginAccountID", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     const optionId = 0
     await expect(
@@ -103,21 +103,32 @@ describe("margin_trading.spec.ts", function () {
     ).to.be.revertedWith("You are not the owner of the token") 
   })
 
-  it("test provideERC721: invalid token", async () => {
+  it("provideERC721: invalid token", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     const optionId = 0
     await expect(
       c.MarginTrading.connect(c.deployer).provideERC721(0, await c.MarginAccountManager.getAddress(), optionId)
-    ).to.be.revertedWith("Token you are attempting to deposit is not available for deposit") 
+    ).to.be.revertedWith("token id is not valid") 
   })
 
-  it("test provideERC721: invalid optionId", async () => {
+  it("provideERC721: invalid optionId", async () => {
     await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
     const optionId = 1
     await expect(
       c.MarginTrading.connect(c.deployer).provideERC721(0, await c.HegicPositionsManager.getAddress(), optionId)
-    ).to.be.revertedWith("Transfer not approved") 
+    ).to.be.revertedWith("token id is not valid") 
   })
+
+  it("provideERC721: an inactive option", async () => {
+    await c.MarginAccountManager.connect(c.deployer).createMarginAccount()
+    const tokenID = 0
+    const optionID = 0
+    const oneWeek = 60*60*24*7
+    await c.MockOperationalTreasury.setLockedLiquidity(0, oneWeek, 0)
+    await expect(
+      c.MarginTrading.connect(c.deployer).provideERC721(tokenID, await c.HegicPositionsManager.getAddress(), optionID)
+    ).to.be.revertedWith('token id is not valid') 
+  });
 
   describe("withdrawERC20", async () => {
     let USDCprovideAmount: bigint
@@ -203,6 +214,15 @@ describe("margin_trading.spec.ts", function () {
         c.MarginTrading.connect(c.deployer).withdrawERC721(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
       ).to.be.revertedWith("The ERC721 token you are attempting to withdraw is not available for withdrawal") 
     });
+
+    it("withdrawERC721: _deleteERC721TokenFromContractList error", async () => {
+      const MARGIN_TRADING_ROLE = keccak256(toUtf8Bytes("MARGIN_TRADING_ROLE"));
+      await c.MarginAccount.grantRole(MARGIN_TRADING_ROLE, await c.deployer.getAddress())
+      optionId = 1
+      await expect(
+        c.MarginAccount.connect(c.deployer).withdrawERC721(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId, await c.deployer.getAddress())
+      ).to.be.revertedWith("id not found") 
+    });
   })
 
   describe("borrow", async () => {
@@ -254,6 +274,12 @@ describe("margin_trading.spec.ts", function () {
       await expect(
         c.MarginTrading.connect(c.deployer).borrow(marginAccountID, await c.USDCe.getAddress(), loanAmount)
       ).to.be.revertedWith("Token is not supported") 
+      await c.MarginAccount.setTokenToLiquidityPool(await c.USDCe.getAddress(), await c.USDC_LiquidityPool.getAddress())
+      await c.MarginAccount.setAvailableTokenToLiquidityPool([await c.WETH.getAddress(), await c.WBTC.getAddress(), await c.USDC.getAddress(), await c.USDCe.getAddress()])
+      await c.ModularSwapRouter.setTokenInToTokenOutToExchange(await c.USDCe.getAddress(), await c.USDC.getAddress(), await c.UniswapModule_WETH_USDC.getAddress())
+      await expect(
+        c.MarginTrading.connect(c.deployer).borrow(marginAccountID, await c.USDCe.getAddress(), loanAmount)
+      ).to.be.revertedWith("Token you are attempting to deposit is not available for deposit") 
     });
 
     it("borrow: invalid amount", async () => {
@@ -296,10 +322,9 @@ describe("margin_trading.spec.ts", function () {
         await c.MarginAccount.getErc20ByContract(marginAccountID, await c.USDC.getAddress())
       ).to.be.eq(USDCprovideAmount - accruedInterest);
       
-      const PortfolioRatio = BigInt(0)
       await expect(
         await c.MarginTrading.getMarginAccountRatio.staticCall(marginAccountID)
-      ).to.be.eq(PortfolioRatio)
+      ).to.be.eq(MaxUint256)
     });
 
     it("repay: invalid marginAccountID", async () => {
@@ -390,7 +415,7 @@ describe("margin_trading.spec.ts", function () {
       WETHprovideAmount = parseUnits("1", await c.WETH.decimals())
       // c.WETH price = 4,000$
       // c.WBTC price = 60,000$
-      loanAmount = WETHprovideAmount * BigInt(10)
+      loanAmount = WETHprovideAmount * BigInt(9)
       marginAccountID = 0
       await c.MarginTrading.connect(c.deployer).provideERC20(0, await c.WETH.getAddress(), WETHprovideAmount)
       await c.MarginTrading.connect(c.deployer).borrow(marginAccountID, await c.WETH.getAddress(), loanAmount)
@@ -399,6 +424,7 @@ describe("margin_trading.spec.ts", function () {
     it("liquidate check PortfolioRatio", async () => {
       const changePrice1 = parseUnits("3500", await c.USDC.decimals())
       await c.QuoterMock.setSwapPrice(await c.WETH.getAddress(), await c.USDC.getAddress(), changePrice1)
+      await c.MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
 
       let portfolioValueSwap = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       let accruedInterest = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - WETHprovideAmount
@@ -409,9 +435,11 @@ describe("margin_trading.spec.ts", function () {
 
       const changePrice2 = parseUnits("4000", await c.USDC.decimals())
       await c.QuoterMock.setSwapPrice(await c.WETH.getAddress(), await c.USDC.getAddress(), changePrice2)
+      await c.MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("54000", await c.USDC.decimals()))
+      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("54000", 8))
       
       portfolioValueSwap = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       accruedInterest = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - WETHprovideAmount
@@ -427,18 +455,51 @@ describe("margin_trading.spec.ts", function () {
       ).to.be.revertedWith("Margin Account ratio is too high to execute liquidation") 
     })
 
-    it("liquidate", async () => {
+    it("change setLiquidatorFee", async () => {
+      expect(await c.MarginAccount.liquidatorFee()).to.be.eq(5000)
+      await c.MarginAccount.connect(c.deployer).setLiquidatorFee(1000)
+      expect(await c.MarginAccount.liquidatorFee()).to.be.eq(1000)
+    })
+
+    it("liquidate and attempt to trigger a swap in the red zone", async () => {
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("56000", await c.USDC.decimals()))
-      await c.MarginTrading.liquidate(marginAccountID)
+      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+      await expect(
+        c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.USDC.getAddress(), await c.WETH.getAddress(), loanAmount, 0)
+      ).to.be.revertedWith("Cannot swap")
+      const MarginAccountValue = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
+      const WETHdebt = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) * parseUnits("4000", await c.USDC.decimals())/parseUnits("1", await c.WETH.decimals())
+      const liquidatorFee = (MarginAccountValue - WETHdebt)*BigInt(5)/BigInt(100)
+      await expect(
+        c.MarginTrading.connect(c.deployer).liquidate(marginAccountID)
+      ).to.changeTokenBalances(
+        c.USDC, 
+        [await c.deployer.getAddress()], 
+        [liquidatorFee]
+      ) 
       expect(
         await c.MarginTrading.getMarginAccountRatio.staticCall(marginAccountID)
-      ).to.be.eq(BigInt(0))
+      ).to.be.eq(MaxUint256)
+    })
+
+    it("liquidate and return an inactive option", async () => {
+      await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
+      await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("56000", await c.USDC.decimals()))
+      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+      const optionId = BigInt(0)
+      await c.MarginTrading.connect(c.deployer).provideERC721(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
+      const oneWeek = 60*60*24*7
+      await c.MockOperationalTreasury.setLockedLiquidity(optionId, oneWeek, 0)      
+
+      await c.MarginTrading.liquidate(marginAccountID)
+      expect(await c.HegicPositionsManager.ownerOf(optionId)).to.be.eq(await c.deployer.getAddress())
     })
 
     it("liquidate insurancePool", async () => {
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("50000", await c.USDC.decimals()))
+      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("50000", 8))
       expect(
         await c.MarginTrading.calculateDebtWithAccruedInterest.staticCall(marginAccountID)
       ).to.be.greaterThan(
@@ -514,6 +575,65 @@ describe("margin_trading.spec.ts", function () {
       expect(await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)).to.be.eq(marginAccountValue)
       expect(await c.MarginAccount.getErc20ByContract(marginAccountID, c.USDC.getAddress())).to.be.eq(marginAccountValue)
       expect(await c.MarginAccount.getErc721ByContract(marginAccountID, c.HegicPositionsManager.getAddress())).to.be.eql([])
+    })
+
+    it("exercise -> error disabling the module", async () => {
+      const hegicModuleAddress = c.ModularSwapRouter.getModuleAddress(await c.HegicPositionsManager.getAddress(), await c.USDC.getAddress())
+      await c.MarginAccount.approveERC721ForAll(await c.HegicPositionsManager.getAddress(), hegicModuleAddress, false)
+      await expect(
+        c.MarginTrading.connect(c.deployer).exercise(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
+      ).to.be.revertedWith(
+        'Transfer not approved'
+      )
+    })
+
+    it("exercise -> call an inactive option", async () => {
+      const oneWeek = 60*60*24*7
+      const optionId = 0
+      await c.MockOperationalTreasury.setLockedLiquidity(optionId, oneWeek, 0)
+      const tokenIn = await c.HegicPositionsManager.getAddress()
+      const tokenOut = await c.USDC.getAddress()
+      expect(await c.ModularSwapRouter.checkValidityERC721.staticCall(tokenIn, tokenOut, optionId)).to.be.eq(false)
+      await expect(
+        c.MarginTrading.connect(c.deployer).exercise(marginAccountID, tokenIn, optionId)
+      ).to.be.revertedWith(
+        'The option is not active or there is no profit on it'
+      )
+    })
+
+    it("exercise -> change USDCe/USDC price", async () => {
+      const newPrice = parseUnits("0.9", 6)
+      await c.QuoterMock.setSwapPrice(await c.USDCe.getAddress(), await c.USDC.getAddress(), newPrice)
+      expect(await c.QuoterMock.swapPrice(await c.USDCe.getAddress(), await c.USDC.getAddress())).to.be.eq(newPrice)
+      await c.MarginTrading.connect(c.deployer).exercise(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
+    })
+
+    it("liquidate -> attempting to liquidate debt-free margin account", async () => {
+      await expect(
+       c.MarginTrading.liquidate(marginAccountID)
+      ).to.be.revertedWith(
+        'Margin Account ratio is too high to execute liquidation'
+      )
+    })
+  })
+
+  describe("Lock/Unlock", async () => {
+    it("Unlock -> errors", async () => {
+      await c.MarginAccount.connect(c.deployer).unlockFunction()
+      await expect(
+        c.MarginAccount.connect(c.deployer).setModularSwapRouter(await c.deployer.getAddress())
+      ).to.be.revertedWith(
+        'Function is timelocked'
+      )
+      await time.increaseTo(await time.latest() + 60 * 60 * 24 * 7)
+      await c.MarginAccount.connect(c.deployer).setModularSwapRouter(await c.deployer.getAddress())
+      await expect(await c.MarginAccount.modularSwapRouter()).to.be.eq(await c.deployer.getAddress())
+      await c.MarginAccount.connect(c.deployer).lockFunction()
+      await expect(
+        c.MarginAccount.connect(c.deployer).setModularSwapRouter(await c.deployer.getAddress())
+      ).to.be.revertedWith(
+        'Function is timelocked'
+      )
     })
   })
   

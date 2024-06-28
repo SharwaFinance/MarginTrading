@@ -88,6 +88,7 @@ interface IMarginAccount {
      */
     function isAvailableErc721(address token) external view returns (bool); 
 
+
     function tokenToLiquidityPool(address token) external view returns (address); 
 
     // ONLY MANAGER_ROLE FUNCTIONS //
@@ -161,9 +162,8 @@ interface IMarginAccount {
      * @param txSender The address of the transaction sender.
      * @param token The address of the ERC721 token.
      * @param collateralTokenID The ID of the collateral token.
-     * @param baseToken The base token address.
      */    
-    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID, address baseToken) external;
+    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID) external;
 
     /**
      * @dev Withdraws ERC20 tokens from a margin account.

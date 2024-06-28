@@ -104,7 +104,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function provideERC721(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
         require(modularSwapRouter.checkValidityERC721(token, BASE_TOKEN, collateralTokenID), "token id is not valid");
-        marginAccount.provideERC721(marginAccountID, msg.sender, token, collateralTokenID, BASE_TOKEN);
+        marginAccount.provideERC721(marginAccountID, msg.sender, token, collateralTokenID);
 
         emit ProvideERC721(marginAccountID, msg.sender, token, collateralTokenID);
     }
@@ -125,7 +125,6 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function withdrawERC721(uint marginAccountID, address token, uint value) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
         require(marginAccount.checkERC721Value(marginAccountID, token, value), "The ERC721 token you are attempting to withdraw is not available for withdrawal");
-        require(modularSwapRouter.checkValidityERC721(token, BASE_TOKEN, value), "token id is not valid");
 
         uint marginAccountValue = calculateMarginAccountValue(marginAccountID);
 
@@ -175,12 +174,13 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function exercise(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID)  {
         require(marginAccount.checkERC721Value(marginAccountID, token, collateralTokenID), "You are not allowed to execute this ERC721 token");
+
         marginAccount.exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID, msg.sender);
 
         emit Exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID);
     }
 
-    // EXTERNAL FUNCTIONS //
+    // ONLY LIQUIDATOR_ROLE FUNCTIONS //
     
     function liquidate(uint marginAccountID) external onlyRole(LIQUIDATOR_ROLE) {
         uint ratio = getMarginAccountRatio(marginAccountID);
@@ -188,11 +188,17 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         require(ratio <= redCoeff, "Margin Account ratio is too high to execute liquidation");
         marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID), msg.sender);
 
-        emit Liquidate(marginAccountID);
+        emit Liquidate(marginAccountID, msg.sender);
     }
 
     // PRIIVATE FUNCTIONS //
 
+    /**
+     * @dev Calculates the margin account ratio.
+     * @param marginAccountValue The total value of the margin account.
+     * @param debtWithAccruedInterest The total debt with accrued interest.
+     * @return marginAccountRatio The calculated margin account ratio.
+     */
     function _calculatePortfolioRatio(uint marginAccountValue, uint debtWithAccruedInterest) private pure returns (uint marginAccountRatio) {
         if (debtWithAccruedInterest == 0) {
             return type(uint256).max;
@@ -233,5 +239,5 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
                 ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID)
             );
         }
-    }    
+    }
 }

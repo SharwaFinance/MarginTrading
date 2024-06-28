@@ -235,7 +235,7 @@ describe("general_use_cases.ts", function () {
     const optionId = 0
     await expect(
       margin_trading.connect(User_1).provideERC721(margin_account_0, await margin_account_manager, optionId)
-    ).to.be.revertedWith("Token you are attempting to deposit is not available for deposit") 
+    ).to.be.revertedWith("token id is not valid") 
   })
 
   it("Should revert provide if the option id is wrong", async () => {
@@ -244,7 +244,7 @@ describe("general_use_cases.ts", function () {
     const optionId = 1
     await expect(
       margin_trading.connect(User_1).provideERC721(margin_account_0, await HegicPositionsManager, optionId)
-    ).to.be.revertedWith("Transfer not approved") 
+    ).to.be.revertedWith("token id is not valid") 
   })
 
   it.skip("Should correctly split USDC between the liquidity pool and the insurance pool", async () => {
@@ -327,8 +327,6 @@ describe("general_use_cases.ts", function () {
       usdcDebt,
       usdcPrice
     )
-
-    // console.log(expected_margin_ratio)
 
     const margin_ratio_from_contract = await margin_trading.getMarginAccountRatio.staticCall(margin_account_id_0)
     await expect(margin_ratio_from_contract).to.be.eq(expected_margin_ratio)

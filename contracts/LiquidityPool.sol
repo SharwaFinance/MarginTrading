@@ -17,7 +17,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
  */
 contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, ReentrancyGuard {
     using Math for uint;
-
+    
     uint private constant ONE_YEAR_SECONDS = 31536000;
     uint private constant INTEREST_RATE_COEFFICIENT = 1e4;
     bytes32 public constant MARGIN_ACCOUNT_ROLE = keccak256("MARGIN_ACCOUNT_ROLE");
@@ -89,6 +89,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
     }
 
     function setInsuranceRateMultiplier(uint newInsuranceRateMultiplier) external onlyRole(MANAGER_ROLE) {
+        require(newInsuranceRateMultiplier <= 0.5*1e4, "The insurance rate multiplier cannot be more than 50%!");
         insuranceRateMultiplier = newInsuranceRateMultiplier;
 
         emit UpdateInsuranceRateMultiplier(newInsuranceRateMultiplier);

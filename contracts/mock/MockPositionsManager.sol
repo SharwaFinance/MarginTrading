@@ -16,7 +16,16 @@ contract MockPositionsManager is IMarginAccountManager {
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02; // Define ERC721_RECEIVED
     uint256 private _nextTokenId = 0;
 
-    function mint(address to) external {
+    function createOptionFor(address holder)
+        public
+        returns (uint256 id)
+    {
+        id = _nextTokenId;
+        mint(holder);   
+    }
+
+
+    function mint(address to) public {
         uint256 tokenID = _nextTokenId;
         _owners[tokenID] = to;
         _nextTokenId++;
@@ -66,7 +75,13 @@ contract MockPositionsManager is IMarginAccountManager {
 
     function balanceOf(address owner) external override view returns (uint256 balance) {}
 
-    function safeTransferFrom(address from, address to, uint256 tokenID) external override {}
+    function safeTransferFrom(address from, address to, uint256 tokenID) external override {
+        address owner = ownerOf(tokenID);
+        require(msg.sender == owner || getApproved(tokenID) == msg.sender || isApprovedForAll(owner, msg.sender), "Transfer not approved");
+        require(owner == from, "Not the token owner");
+        _owners[tokenID] = to;
+        emit Transfer(from, to, tokenID);
+    }
 
     function safeTransferFrom(address from, address to, uint256 tokenID, bytes calldata data) external override {}
 

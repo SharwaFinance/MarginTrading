@@ -46,11 +46,11 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
         for (uint i; i < value.length; i++) {
             uint profit = getPayOffAmount(value[i]);
             hegicPositionManager.transferFrom(marginAccount, address(this), value[i]);
-            if (getPayOffAmount(value[i]) > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
-                hegicPositionManager.transferFrom(marginAccount, address(this), value[i]);
+            if (profit > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
                 operationalTreasury.payOff(value[i], marginAccount);
-                amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, 0);
-            }
+                uint amountOutMinimum = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+                amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, amountOutMinimum);
+            } 
             hegicPositionManager.transferFrom(address(this), holder, value[i]);
         }
     }
@@ -60,7 +60,8 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
         require(profit > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp, "The option is not active or there is no profit on it");
         hegicPositionManager.transferFrom(marginAccount, address(this), id);
         operationalTreasury.payOff(id, marginAccount);
-        amountOut = assetExchangerUSDCetoUSDC.swapInput(profit, 0);
+        uint amountOutMinimum = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+        amountOut = assetExchangerUSDCetoUSDC.swapInput(profit, amountOutMinimum);
         hegicPositionManager.transferFrom(address(this), marginAccount, id);
     }
 

@@ -10,7 +10,8 @@ import {
     SwapRouterMock,
     ModularSwapRouter,
     UniswapModule,
-    QuoterMock
+    QuoterMock,
+    MockAggregatorV3
   } from "../typechain-types";
 import { MockERC20 } from "../typechain-types";
 import { Signer, parseUnits, ZeroAddress, keccak256, toUtf8Bytes } from "ethers";
@@ -29,6 +30,8 @@ export interface PreparationResult {
     ModularSwapRouter: ModularSwapRouter;
     UniswapModule_WETH_USDC: UniswapModule;
     QuoterMock: QuoterMock;
+    MockAggregatorV3_WETH_USDC: MockAggregatorV3;
+    MockAggregatorV3_WBTC_USDC: MockAggregatorV3;
     USDC: MockERC20;
     USDCe: MockERC20;
     WETH: MockERC20;
@@ -52,6 +55,8 @@ export async function preparationContracts():  Promise<PreparationResult> {
     let ModularSwapRouter: ModularSwapRouter
     let UniswapModule_WETH_USDC: UniswapModule 
     let QuoterMock: QuoterMock
+    let MockAggregatorV3_WETH_USDC: MockAggregatorV3;
+    let MockAggregatorV3_WBTC_USDC: MockAggregatorV3;
     let USDC: MockERC20
     let USDCe: MockERC20
     let WETH: MockERC20
@@ -67,6 +72,8 @@ export async function preparationContracts():  Promise<PreparationResult> {
     ModularSwapRouter = await ethers.getContract("ModularSwapRouter")
     UniswapModule_WETH_USDC = await ethers.getContract("WETH_USDC_UniswapModule")
     QuoterMock = await ethers.getContract("Quoter")
+    MockAggregatorV3_WETH_USDC = await ethers.getContract("MockAggregatorV3_WETH_USDC")
+    MockAggregatorV3_WBTC_USDC = await ethers.getContract("MockAggregatorV3_WBTC_USDC")
     USDC = await ethers.getContract("USDC")
     USDCe = await ethers.getContract("USDCe")
     WETH = await ethers.getContract("WETH")
@@ -163,6 +170,8 @@ export async function preparationContracts():  Promise<PreparationResult> {
         ModularSwapRouter: ModularSwapRouter,
         UniswapModule_WETH_USDC: UniswapModule_WETH_USDC,
         QuoterMock: QuoterMock,
+        MockAggregatorV3_WETH_USDC: MockAggregatorV3_WETH_USDC,
+        MockAggregatorV3_WBTC_USDC: MockAggregatorV3_WBTC_USDC,
         USDC: USDC,
         USDCe: USDCe,
         WETH: WETH,

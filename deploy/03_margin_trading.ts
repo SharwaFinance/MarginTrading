@@ -11,6 +11,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const MarginAccount = await get("MarginAccount")
 
   const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
+  const LIQUIDATOR_ROLE = keccak256(toUtf8Bytes("LIQUIDATOR_ROLE"));
   const MARGIN_TRADING_ROLE = keccak256(toUtf8Bytes("MARGIN_TRADING_ROLE")); 
 
   const MarginTrading = await deploy("MarginTrading", {
@@ -28,6 +29,14 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     {log: true, from: deployer},
     "grantRole",
     MANAGER_ROLE,
+    deployer
+  )
+
+  await execute(
+    "MarginTrading",
+    {log: true, from: deployer},
+    "grantRole",
+    LIQUIDATOR_ROLE,
     deployer
   )
 
