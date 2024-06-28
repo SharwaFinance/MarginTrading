@@ -75,30 +75,6 @@ interface IMarginAccount {
     function checkLiquidityPool(address token) external view returns (bool isValid);
 
     /**
-     * @dev Prepares ERC20 and ERC721 token parameters for a given margin account.
-     * @param marginAccountID The ID of the margin account.
-     * @param baseToken The base token address.
-     * @return erc20Params The array of ERC20 position info.
-     * @return erc721Params The array of ERC721 position info.
-     */    
-    function preparationTokesParams(uint marginAccountID, address baseToken) external view returns (
-        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
-        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-    );
-    
-    /**
-     * @dev Prepares ERC20 token parameters based on debt for a given margin account.
-     * @param marginAccountID The ID of the margin account.
-     * @param baseToken The base token address.
-     * @return erc20Params The array of ERC20 position info based on debt.
-     * @return erc721Params An empty array of ERC721 position info.
-     */    
-    function preparationTokesParamsByDebt(uint marginAccountID, address baseToken) external view returns (
-        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
-        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-    );
-
-    /**
      * @dev Checks if a specific ERC20 token is available.
      * @param token The address of the ERC20 token.
      * @return A boolean indicating if the ERC20 token is available.
@@ -111,6 +87,8 @@ interface IMarginAccount {
      * @return A boolean indicating if the ERC721 token is available.
      */
     function isAvailableErc721(address token) external view returns (bool); 
+
+    function tokenToLiquidityPool(address token) external view returns (address); 
 
     // ONLY MANAGER_ROLE FUNCTIONS //
 

@@ -88,38 +88,6 @@ contract MarginAccount is IMarginAccount, AccessControl {
         isValid = liquifityPoolAddress != address(0);       
     }
 
-    function preparationTokesParams(uint marginAccountID, address baseToken) public view returns (
-        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
-        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-    ) {
-        erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableErc20.length);
-        erc721Params = new IModularSwapRouter.ERC721PositionInfo[](availableErc721.length);
-        for(uint i; i < availableErc20.length; i++) {
-            uint erc20Balance = erc20ByContract[marginAccountID][availableErc20[i]];
-            erc20Params[i] = IModularSwapRouter.ERC20PositionInfo(availableErc20[i], baseToken, erc20Balance);
-        }
-
-        for(uint i; i < availableErc721.length; i++) {
-            uint[] memory erc721TokensByContract = erc721ByContract[marginAccountID][availableErc721[i]];
-            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, address(0), erc721TokensByContract);
-        }
-    }
-
-    function preparationTokesParamsByDebt(uint marginAccountID, address baseToken) public view returns (
-        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
-        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-    ) {
-        erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableTokenToLiquidityPool.length);
-        for (uint i; i < availableTokenToLiquidityPool.length; i++) {
-            address liquidityPoolAddress = tokenToLiquidityPool[availableTokenToLiquidityPool[i]];
-            erc20Params[i] = IModularSwapRouter.ERC20PositionInfo(
-                availableTokenToLiquidityPool[i],
-                baseToken,
-                ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID)
-            );
-        }
-    }
-
     // ONLY MANAGER_ROLE FUNCTIONS //
 
     function setModularSwapRouter(IModularSwapRouter newModularSwapRouter) external onlyRole(MANAGER_ROLE) {

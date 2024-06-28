@@ -6,6 +6,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {IMarginTrading} from "./interfaces/IMarginTrading.sol";
+import {ILiquidityPool} from "./interfaces/ILiquidityPool.sol";
 
 /**
  * @title MarginTrading
@@ -15,7 +16,7 @@ import {IMarginTrading} from "./interfaces/IMarginTrading.sol";
  * @author 0nika0
  */
 contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
-    uint private constant COEFFICIENT_DECUMALS = 1e5;
+    uint private constant COEFFICIENT_DECIMALS = 1e5;
 
     address public immutable BASE_TOKEN;
 
@@ -73,7 +74,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         (
             IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
             IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-        ) = marginAccount.preparationTokesParams(marginAccountID, BASE_TOKEN);
+        ) = preparationTokesParams(marginAccountID, BASE_TOKEN);
         marginAccountValue = modularSwapRouter.calculateTotalPositionValue(erc20Params,erc721Params);
     }
 
@@ -81,7 +82,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         (
             IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
             IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-        ) = marginAccount.preparationTokesParamsByDebt(marginAccountID, BASE_TOKEN);
+        ) = preparationTokesParamsByDebt(marginAccountID, BASE_TOKEN);
         debtSizeInUSDC += modularSwapRouter.calculateTotalPositionValue(erc20Params, erc721Params);
     }
 
@@ -185,7 +186,9 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
     // EXTERNAL FUNCTIONS //
     
     function liquidate(uint marginAccountID) external onlyRole(LIQUIDATOR_ROLE) {
-        require(getMarginAccountRatio(marginAccountID) <= redCoeff, "Margin Account ratio is too high to execute liquidation");
+        uint ratio = getMarginAccountRatio(marginAccountID);
+        require(ratio > 0, "Margin Account is debt-free");
+        require(ratio <= redCoeff, "Margin Account ratio is too high to execute liquidation");
         marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID));
 
         emit Liquidate(marginAccountID);
@@ -193,17 +196,46 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     // PRIIVATE FUNCTIONS //
 
-    /**
-     * @dev Calculates the margin account ratio.
-     * @param marginAccountValue The total value of the margin account.
-     * @param debtWithAccruedInterest The total debt with accrued interest.
-     * @return marginAccountRatio The calculated margin account ratio.
-     */
     function _calculatePortfolioRatio(uint marginAccountValue, uint debtWithAccruedInterest) private pure returns (uint marginAccountRatio) {
         if (debtWithAccruedInterest == 0) {
             return 0;
         }
-        require(marginAccountValue*COEFFICIENT_DECUMALS > debtWithAccruedInterest, "Margin Account value should be greater than debt with accrued interest");
-        marginAccountRatio = marginAccountValue*COEFFICIENT_DECUMALS/debtWithAccruedInterest;
+        require(marginAccountValue*COEFFICIENT_DECIMALS > debtWithAccruedInterest, "Margin Account value should be greater than debt with accrued interest");
+        marginAccountRatio = marginAccountValue*COEFFICIENT_DECIMALS/debtWithAccruedInterest;
     }
+
+    function preparationTokesParams(uint marginAccountID, address baseToken) public view returns (
+        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
+        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
+    ) {
+        address[] memory availableErc20 = marginAccount.getAvailableErc20();
+        address[] memory availableErc721 = marginAccount.getAvailableErc721();
+        erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableErc20.length);
+        erc721Params = new IModularSwapRouter.ERC721PositionInfo[](availableErc721.length);
+        for(uint i; i < availableErc20.length; i++) {
+            uint erc20Balance = marginAccount.getErc20ByContract(marginAccountID, availableErc20[i]);
+            erc20Params[i] = IModularSwapRouter.ERC20PositionInfo(availableErc20[i], baseToken, erc20Balance);
+        }
+
+        for(uint i; i < availableErc721.length; i++) {
+            uint[] memory erc721TokensByContract = marginAccount.getErc721ByContract(marginAccountID, availableErc721[i]);
+            erc721Params[i] = IModularSwapRouter.ERC721PositionInfo(availableErc721[i], baseToken, address(0), erc721TokensByContract);
+        }
+    }
+
+    function preparationTokesParamsByDebt(uint marginAccountID, address baseToken) public view returns (
+        IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
+        IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
+    ) {
+        address[] memory availableTokenToLiquidityPool = marginAccount.getAvailableTokenToLiquidityPool();
+        erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableTokenToLiquidityPool.length);
+        for (uint i; i < availableTokenToLiquidityPool.length; i++) {
+            address liquidityPoolAddress = marginAccount.tokenToLiquidityPool(availableTokenToLiquidityPool[i]);
+            erc20Params[i] = IModularSwapRouter.ERC20PositionInfo(
+                availableTokenToLiquidityPool[i],
+                baseToken,
+                ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID)
+            );
+        }
+    }    
 }
