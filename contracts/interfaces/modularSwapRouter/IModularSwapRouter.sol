@@ -40,6 +40,8 @@ interface IModularSwapRouter {
 
     // EXTERNAL FUNCTIONS //
 
+    function calculatePositionValue(address tokenIn, address tokenOut, uint amountIn) external returns (uint amountOut);
+
     /**
      * @notice Calculates the output amount for a given input amount in an ERC20 swap.
      * @param tokenIn The address of the input token.

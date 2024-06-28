@@ -4,7 +4,8 @@ import {IPositionManagerERC20} from "../../interfaces/modularSwapRouter/IPositio
 import {IQuoter} from "../../interfaces/modularSwapRouter/uniswap/IQuoter.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 
 /**
@@ -24,6 +25,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
 
     address public tokenInContract;
     address public tokenOutContract;
+    address public chainlinkPricer;
 
     ISwapRouter public swapRouter;
     IQuoter public quoter;
@@ -32,6 +34,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
         address _marginAccount,
         address _tokenInContract,
         address _tokenOutContract,
+        address _chainlinkPricer,
         ISwapRouter _swapRouter,
         IQuoter _quoter,
         bytes memory _uniswapPath
@@ -39,6 +42,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
         marginAccount = _marginAccount;
         tokenInContract = _tokenInContract;
         tokenOutContract = _tokenOutContract;
+        chainlinkPricer = _chainlinkPricer;
         swapRouter = _swapRouter;
         quoter = _quoter;
         uniswapPath = _uniswapPath;
@@ -57,6 +61,19 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
     }
 
     // VIEW FUNCTIONS //
+
+    function getPositionValue(uint256 amountIn) external returns (uint amountOut) {
+        require(chainlinkPricer != address(0), "invalid module");
+        (, int256 latestPrice, , , ) = AggregatorV3Interface(chainlinkPricer).latestRoundData();
+        require(latestPrice != 0, "invalid price");
+        uint tokenInDecimals = ERC20(tokenInContract).decimals();
+        uint tokenOutDecimals = ERC20(tokenOutContract).decimals();
+        uint chainlinkDecimals = AggregatorV3Interface(chainlinkPricer).decimals();
+        require(chainlinkDecimals>tokenOutDecimals, "invalid tokenOut");
+        uint diffDecimals = chainlinkDecimals-tokenOutDecimals;
+
+        return amountIn*uint256(latestPrice)/(10**tokenInDecimals)/(10**diffDecimals);
+    }
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
@@ -77,41 +94,41 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
      * @dev This function can be called by any account.
      */
     function allApprove() external {
-        IERC20(tokenInContract).approve(address(swapRouter), type(uint256).max);
+        ERC20(tokenInContract).approve(address(swapRouter), type(uint256).max);
     }
 
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTION //
 
     function liquidate(uint256 amountIn) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
 
-        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
+        ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
 
         amountOut = swapRouter.exactInput(params);
-        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
+        ERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     function swapInput(uint amountIn, uint amountOutMinimum) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
-        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
+        ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
         params.amountOutMinimum = amountOutMinimum;
 
         amountOut = swapRouter.exactInput(params);
 
-        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
+        ERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     function swapOutput(uint amountOut) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountIn) {
         ISwapRouter.ExactOutputParams memory params = _preparationOutputParams(amountOut);
 
         amountIn = getOutputPositionValue(amountOut);
-        IERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
+        ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
         swapRouter.exactOutput(params);
 
-        IERC20(tokenOutContract).transfer(marginAccount, amountOut);
+        ERC20(tokenOutContract).transfer(marginAccount, amountOut);
     }
 
     // PRIVATE FUNCTION //

@@ -37,6 +37,16 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
 
     // EXTERNAL FUNCTIONS //
 
+    function calculatePositionValue(address tokenIn, address tokenOut, uint amountIn) external returns (uint amountOut) {
+        address marginTradingBaseToken = marginTrading.BASE_TOKEN();
+        if (tokenIn == marginTradingBaseToken && tokenOut == marginTradingBaseToken) {
+            amountOut = amountIn;
+        } else {
+            address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
+            amountOut = IPositionManagerERC20(moduleAddress).getPositionValue(amountIn);
+        }
+    }    
+
     function calculateAmountOutERC20(address tokenIn, address tokenOut, uint amountIn) external returns (uint amountOut) {
         address marginTradingBaseToken = marginTrading.BASE_TOKEN();
         if (tokenIn == marginTradingBaseToken && tokenOut == marginTradingBaseToken) {
@@ -93,7 +103,7 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
             ) {
                 totalValue += erc20Params[i].value;   
             } else if (moduleAddress != address(0)) {
-                totalValue += IPositionManagerERC20(moduleAddress).getInputPositionValue(erc20Params[i].value);
+                totalValue += IPositionManagerERC20(moduleAddress).getPositionValue(erc20Params[i].value);
             }
         }
 

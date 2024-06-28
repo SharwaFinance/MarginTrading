@@ -28,6 +28,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
     IMarginAccount public immutable marginAccount;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
 
     constructor(
         address _positionsManager,
@@ -110,7 +111,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         require(marginAccount.checkERC20Amount(marginAccountID, token, amount), "Insufficient token balance for withdrawal");
         uint marginAccountValue = calculateMarginAccountValue(marginAccountID);
 
-        uint withdrawSizeInBaseToken = modularSwapRouter.calculateAmountOutERC20(token, BASE_TOKEN, amount);
+        uint withdrawSizeInBaseToken = modularSwapRouter.calculatePositionValue(token, BASE_TOKEN, amount);
         marginAccountValue -= withdrawSizeInBaseToken;
         uint debtWithAccruedInterest = calculateDebtWithAccruedInterest(marginAccountID);
         uint portfolioRatio = _calculatePortfolioRatio(marginAccountValue, debtWithAccruedInterest);
@@ -145,7 +146,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function borrow(uint marginAccountID, address token, uint amount) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
         require(marginAccount.checkLiquidityPool(token), "Token is not supported");
-        uint amountInBaseToken = modularSwapRouter.calculateAmountOutERC20(token, BASE_TOKEN, amount);
+        uint amountInBaseToken = modularSwapRouter.calculatePositionValue(token, BASE_TOKEN, amount);
         uint marginAccountValue = calculateMarginAccountValue(marginAccountID);
         uint debtWithAccruedInterest = calculateDebtWithAccruedInterest(marginAccountID);
         uint marginAccountRatio = _calculatePortfolioRatio(marginAccountValue + amountInBaseToken, debtWithAccruedInterest + amountInBaseToken);
@@ -178,7 +179,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     // EXTERNAL FUNCTIONS //
     
-    function liquidate(uint marginAccountID) external {
+    function liquidate(uint marginAccountID) external onlyRole(LIQUIDATOR_ROLE) {
         require(getMarginAccountRatio(marginAccountID) <= redCoeff, "Margin Account ratio is too high to execute liquidation");
         marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID));
 

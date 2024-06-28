@@ -16,6 +16,7 @@
     "hardhat-contract-sizer": "^2.10.0"
   },
   "dependencies": {
+    "@chainlink/contracts": "^1.1.1",
     "@keep-network/hardhat-local-networks-config": "^0.1.0-pre.4",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",

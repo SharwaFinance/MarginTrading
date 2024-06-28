@@ -3,6 +3,8 @@ pragma solidity 0.8.20;
 interface IPositionManagerERC20 {
     // VIEW FUNCTIONS //
 
+    function getPositionValue(uint256 amountIn) external returns (uint amountOut);
+    
     /**
      * @notice Returns the output amount for a given input amount using the current Uniswap path.
      * @param amountIn The input amount for which to quote the output value.
