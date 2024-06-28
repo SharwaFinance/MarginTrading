@@ -192,7 +192,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     function withdrawERC721(uint marginAccountID, address token, uint value, address txSender) external onlyRole(MARGIN_TRADING_ROLE) {
         _deleteERC721TokenFromContractList(marginAccountID, token, value);
-        IERC721(token).transferFrom(address(this), txSender, value);
+        IERC721(token).safeTransferFrom(address(this), txSender, value);
     }
 
     function borrow(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
