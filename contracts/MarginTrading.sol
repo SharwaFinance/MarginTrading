@@ -164,6 +164,10 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
     }
 
     function swap(uint marginAccountID, address tokenIn, address tokenOut, uint amountIn, uint amountOutMinimum) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
+        uint marginAccountValue = calculateMarginAccountValue(marginAccountID);
+        uint debtWithAccruedInterest = calculateDebtWithAccruedInterest(marginAccountID);
+        uint marginAccountRatio = _calculatePortfolioRatio(marginAccountValue, debtWithAccruedInterest);
+        require(marginAccountRatio >= redCoeff, "Cannot swap"); 
         emit Swap(marginAccountID, swapID, tokenIn, tokenOut, amountIn);
 
         marginAccount.swap(marginAccountID, swapID, tokenIn, tokenOut, amountIn, amountOutMinimum);
