@@ -175,7 +175,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         debtSharesSum -= shareChange;
         shareOfDebt[marginAccountID] -= shareChange;
         if (debt > amount) {
-            uint tempDebt = (portfolioIdToDebt[marginAccountID] * (debt - amount)) / debt;
+            uint tempDebt = Math.mulDiv(portfolioIdToDebt[marginAccountID], debt - amount, debt, Math.Rounding.Up);
             netDebt = netDebt - (portfolioIdToDebt[marginAccountID] - tempDebt);
             portfolioIdToDebt[marginAccountID] = tempDebt;
         } else {
