@@ -314,6 +314,10 @@ interface IMarginAccount {
         bool value
     );
 
+    event UpdateErc721Limit(
+        uint newErc721Limit
+    );
+
    /**
      * @dev Emitted when a swap operation is performed.
      * @param swapID The ID of the swap operation.

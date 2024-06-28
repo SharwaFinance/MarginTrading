@@ -14,6 +14,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @author 0nika0
  */
 contract MarginAccount is IMarginAccount, AccessControl {
+    bytes32 public constant MARGIN_TRADING_ROLE = keccak256("MARGIN_TRADING_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
     mapping(uint => mapping(address => uint)) private erc20ByContract;
     mapping(uint => mapping(address => uint[])) private erc721ByContract;
 
@@ -30,8 +33,8 @@ contract MarginAccount is IMarginAccount, AccessControl {
     IModularSwapRouter public modularSwapRouter;
     address public insurancePool;
 
-    bytes32 public constant MARGIN_TRADING_ROLE = keccak256("MARGIN_TRADING_ROLE");
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    uint public erc721Limit = 10;
+
 
     constructor(
         address _insurancePool
@@ -159,7 +162,13 @@ contract MarginAccount is IMarginAccount, AccessControl {
         isAvailableErc721[token] = value;
 
         emit UpdateIsAvailableErc721(token, value);
-    }    
+    }
+
+    function setErc721Limit(uint newErc721Limit) external onlyRole(MANAGER_ROLE) {
+        erc721Limit = newErc721Limit;
+
+        emit UpdateErc721Limit(newErc721Limit);
+    }           
 
     function approveERC20(address token, address to, uint amount) external onlyRole(MANAGER_ROLE) {
         IERC20(token).approve(to, amount);
@@ -175,6 +184,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID, address baseToken) external onlyRole(MARGIN_TRADING_ROLE) {
         require(isAvailableErc721[token], "Token you are attempting to deposit is not available for deposit");
+        require(erc721ByContract[marginAccountID][token].length <= erc721Limit, "erc721limit is exceeded");
         erc721ByContract[marginAccountID][token].push(collateralTokenID);
         IERC721(token).transferFrom(txSender, address(this), collateralTokenID);
         IERC721(token).approve(modularSwapRouter.getModuleAddress(token, baseToken), collateralTokenID);
