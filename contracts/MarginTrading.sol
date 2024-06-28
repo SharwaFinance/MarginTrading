@@ -172,6 +172,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
     }
 
     function exercise(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID)  {
+        require(marginAccount.checkERC721Value(marginAccountID, token, collateralTokenID), "You are not allowed to execute this ERC721 token");
         marginAccount.exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID, msg.sender);
 
         emit Exercise(marginAccountID, token, BASE_TOKEN, collateralTokenID);
