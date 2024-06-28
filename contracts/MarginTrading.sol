@@ -189,7 +189,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         uint ratio = getMarginAccountRatio(marginAccountID);
         require(ratio > 0, "Margin Account is debt-free");
         require(ratio <= redCoeff, "Margin Account ratio is too high to execute liquidation");
-        marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID));
+        marginAccount.liquidate(marginAccountID, BASE_TOKEN, marginAccountManager.ownerOf(marginAccountID), msg.sender);
 
         emit Liquidate(marginAccountID);
     }

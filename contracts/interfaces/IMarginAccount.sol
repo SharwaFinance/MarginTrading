@@ -205,7 +205,7 @@ interface IMarginAccount {
      * @param baseToken The address of the base ERC20 token used for liquidation.
      * @param marginAccountOwner The address of the owner of the margin account.
      */
-    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner) external;
+    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner, address liquidator) external;
 
     /**
      * @dev Swaps tokens using the modular swap router.
@@ -294,6 +294,10 @@ interface IMarginAccount {
 
     event UpdateErc721Limit(
         uint newErc721Limit
+    );
+
+    event UpdateLiquidatorFee(
+        uint newLiquidatorFee
     );
 
    /**

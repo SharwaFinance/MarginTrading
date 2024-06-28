@@ -16,6 +16,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract MarginAccount is IMarginAccount, AccessControl {
     bytes32 public constant MARGIN_TRADING_ROLE = keccak256("MARGIN_TRADING_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    uint private constant COEFFICIENT_DECIMALS = 1e5;
     uint private constant TIMELOCK = 7 days;
 
     mapping(uint => mapping(address => uint)) private erc20ByContract;
@@ -36,6 +37,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     uint public erc721Limit = 10;
     uint public timelock = 0;
+    uint public liquidatorFee = 0.05 * 1e5;
 
     constructor(
         address _insurancePool
@@ -152,6 +154,12 @@ contract MarginAccount is IMarginAccount, AccessControl {
         erc721Limit = newErc721Limit;
 
         emit UpdateErc721Limit(newErc721Limit);
+    }   
+
+    function setLiquidatorFee(uint newLiquidatorFee) external onlyRole(MANAGER_ROLE) {
+        liquidatorFee = newLiquidatorFee;
+
+        emit UpdateLiquidatorFee(newLiquidatorFee);
     }           
 
     function approveERC20(address token, address to, uint amount) external onlyRole(MANAGER_ROLE) {
@@ -208,7 +216,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         ILiquidityPool(liquifityPoolAddress).repay(marginAccountID, amount);
     }
 
-    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner) external onlyRole(MARGIN_TRADING_ROLE) {
+    function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner, address liquidator) external onlyRole(MARGIN_TRADING_ROLE) {
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params = new IModularSwapRouter.ERC20PositionInfo[](availableErc20.length); 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params = new IModularSwapRouter.ERC721PositionInfo[](availableErc721.length);
 
@@ -228,7 +236,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
         erc20ByContract[marginAccountID][baseToken] += amountOutInUSDC;
 
-        _clearDebtsWithPools(marginAccountID, baseToken);
+        _clearDebtsWithPools(marginAccountID, baseToken, liquidator);
     }
 
     function swap(uint marginAccountID, uint swapID, address tokenIn, address tokenOut, uint amountIn, uint amountOutMinimum) external onlyRole(MARGIN_TRADING_ROLE){
@@ -274,7 +282,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
      * @param marginAccountID The ID of the margin account.
      * @param baseToken The base token address.
      */
-    function _clearDebtsWithPools(uint marginAccountID, address baseToken) private {
+    function _clearDebtsWithPools(uint marginAccountID, address baseToken, address liquidator) private {
         for (uint i; i < availableTokenToLiquidityPool.length; i++) {
             address liquidityPoolAddress = tokenToLiquidityPool[availableTokenToLiquidityPool[i]];   
             uint poolDebt = ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
@@ -282,7 +290,8 @@ contract MarginAccount is IMarginAccount, AccessControl {
                 uint amountInUSDC = modularSwapRouter.calculateAmountInERC20(baseToken, availableTokenToLiquidityPool[i], poolDebt);
                 uint userUSDCbalance = getErc20ByContract(marginAccountID, baseToken);
                 if (amountInUSDC > userUSDCbalance) {
-                    uint amountOut = modularSwapRouter.swapInput(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance, 0);
+                    uint amountOutMinimum = modularSwapRouter.calculateAmountOutERC20(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance);
+                    uint amountOut = modularSwapRouter.swapInput(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance, amountOutMinimum);
                     erc20ByContract[marginAccountID][baseToken] -= userUSDCbalance;
                     IERC20(availableTokenToLiquidityPool[i]).transferFrom(insurancePool, address(this), poolDebt-amountOut); 
                 } else {
@@ -292,5 +301,9 @@ contract MarginAccount is IMarginAccount, AccessControl {
                 ILiquidityPool(liquidityPoolAddress).repay(marginAccountID, poolDebt);
             }
         }
+        uint userUSDCbalanceAfterRepay = getErc20ByContract(marginAccountID, baseToken);
+        uint liquidatorComission = userUSDCbalanceAfterRepay*liquidatorFee/COEFFICIENT_DECIMALS;
+        erc20ByContract[marginAccountID][baseToken] -= liquidatorComission;
+        IERC20(baseToken).transfer(liquidator, liquidatorComission); 
     }
 }
