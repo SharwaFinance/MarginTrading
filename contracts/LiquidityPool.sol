@@ -132,6 +132,10 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
 
     function borrow(uint marginAccountID, uint amount) external onlyRole(MARGIN_ACCOUNT_ROLE) {
         require(
+            amount > 0,
+            "Amount must be greater than 0!"
+        );
+        require(
             poolToken.balanceOf(address(this)) >= amount,
             "There are not enough tokens in the liquidity pool to provide a loan!"
         );
