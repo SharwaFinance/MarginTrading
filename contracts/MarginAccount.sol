@@ -208,13 +208,13 @@ contract MarginAccount is IMarginAccount, AccessControl {
         address liquifityPoolAddress = tokenToLiquidityPool[token];    
         require(liquifityPoolAddress != address(0), "Token is not supported");
         
-        require(amount <= erc20ByContract[marginAccountID][token], "Insufficient funds to repay the debt");
 
 
         uint debtWithAccruedInterest = ILiquidityPool(liquifityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
         if (amount == 0 || amount > debtWithAccruedInterest) {
             amount = debtWithAccruedInterest;
         }
+        require(amount <= erc20ByContract[marginAccountID][token], "Insufficient funds to repay the debt");
         
         erc20ByContract[marginAccountID][token] -= amount;
         ILiquidityPool(liquifityPoolAddress).repay(marginAccountID, amount);
