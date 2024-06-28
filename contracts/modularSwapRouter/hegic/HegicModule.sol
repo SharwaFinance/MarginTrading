@@ -66,7 +66,7 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
     // EXTERNAL FUNCTIONS //
 
     function checkValidityERC721(uint id) external returns(bool) {
-        if (getPayOffAmount(id) > 0 && isOptionActive(id) && getExpirationTime(id) > block.timestamp) {
+        if (isOptionActive(id) && getExpirationTime(id) > block.timestamp) {
             return true;
         }
     }

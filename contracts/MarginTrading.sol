@@ -103,6 +103,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
 
     function provideERC721(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
+        require(modularSwapRouter.checkValidityERC721(token, BASE_TOKEN, collateralTokenID), "token id is not valid");
         marginAccount.provideERC721(marginAccountID, msg.sender, token, collateralTokenID, BASE_TOKEN);
 
         emit ProvideERC721(marginAccountID, msg.sender, token, collateralTokenID);
