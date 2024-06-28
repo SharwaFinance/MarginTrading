@@ -7,6 +7,7 @@ import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import {ILiquidityPool} from"./interfaces/ILiquidityPool.sol";
 import {UD60x18, ud, convert, intoUint256, pow, div} from "@prb/math/src/UD60x18.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title LiquidityPool
@@ -15,6 +16,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
  * @author 0nika0
  */
 contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, ReentrancyGuard {
+    using Math for uint;
+
     uint private constant ONE_YEAR_SECONDS = 31536000;
     uint private constant INTEREST_RATE_COEFFICIENT = 1e4;
     bytes32 public constant MARGIN_ACCOUNT_ROLE = keccak256("MARGIN_ACCOUNT_ROLE");
@@ -140,7 +143,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             "Limit is exceed!"
         );
         uint newDebtShare = borrows > 0
-            ? (debtSharesSum * amount) / borrows
+            ? debtSharesSum.mulDiv(amount, borrows, Math.Rounding.Up)
             : (amount * 10 ** decimals()) / 10 ** poolToken.decimals();
         
         debtSharesSum += newDebtShare;
