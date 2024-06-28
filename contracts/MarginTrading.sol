@@ -117,9 +117,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         marginAccountValue -= withdrawSizeInBaseToken;
         uint debtWithAccruedInterest = calculateDebtWithAccruedInterest(marginAccountID);
         uint portfolioRatio = _calculatePortfolioRatio(marginAccountValue, debtWithAccruedInterest);
-        if (portfolioRatio != 0) {
-            require(portfolioRatio > yellowCoeff, "portfolioRatio is too low");
-        }
+        require(portfolioRatio > yellowCoeff, "portfolioRatio is too low");
         marginAccount.withdrawERC20(marginAccountID, token, amount, msg.sender);
 
         emit WithdrawERC20(marginAccountID, msg.sender, token, amount);
@@ -137,9 +135,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         uint debtWithAccruedInterest = calculateDebtWithAccruedInterest(marginAccountID);
         uint portfolioRatio = _calculatePortfolioRatio(marginAccountValue, debtWithAccruedInterest);
 
-        if (portfolioRatio != 0) {
-            require(portfolioRatio > yellowCoeff, "portfolioRatio is too low");
-        }
+        require(portfolioRatio > yellowCoeff, "portfolioRatio is too low");
 
         marginAccount.withdrawERC721(marginAccountID, token, value, msg.sender);
 
@@ -199,9 +195,8 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function _calculatePortfolioRatio(uint marginAccountValue, uint debtWithAccruedInterest) private pure returns (uint marginAccountRatio) {
         if (debtWithAccruedInterest == 0) {
-            return 0;
+            return type(uint256).max;
         }
-        require(marginAccountValue*COEFFICIENT_DECIMALS > debtWithAccruedInterest, "Margin Account value should be greater than debt with accrued interest");
         marginAccountRatio = marginAccountValue*COEFFICIENT_DECIMALS/debtWithAccruedInterest;
     }
 
