@@ -313,4 +313,10 @@ interface IMarginAccount {
         uint amountIn,
         uint amountOut
     );
+
+    event Unlock(
+        uint timelock
+    );
+
+    event Lock();
 }

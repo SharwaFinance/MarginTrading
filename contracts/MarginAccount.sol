@@ -16,6 +16,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract MarginAccount is IMarginAccount, AccessControl {
     bytes32 public constant MARGIN_TRADING_ROLE = keccak256("MARGIN_TRADING_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    uint private constant TIMELOCK = 7 days;
 
     mapping(uint => mapping(address => uint)) private erc20ByContract;
     mapping(uint => mapping(address => uint[])) private erc721ByContract;
@@ -34,13 +35,18 @@ contract MarginAccount is IMarginAccount, AccessControl {
     address public insurancePool;
 
     uint public erc721Limit = 10;
-
+    uint public timelock = 0;
 
     constructor(
         address _insurancePool
     ) {
         insurancePool = _insurancePool;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    modifier notLocked() {
+        require(timelock != 0 && timelock <= block.timestamp, "Function is timelocked");
+        _;
     }
 
     // VIEW FUNCTIONS //
@@ -90,43 +96,53 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     // ONLY MANAGER_ROLE FUNCTIONS //
 
-    function setModularSwapRouter(IModularSwapRouter newModularSwapRouter) external onlyRole(MANAGER_ROLE) {
+    function unlockFunction() external onlyRole(MANAGER_ROLE) {
+        timelock = block.timestamp + TIMELOCK;
+        emit Unlock(timelock);  
+    }
+
+    function lockFunction() external onlyRole(MANAGER_ROLE) {
+        timelock = 0;
+        emit Lock();
+    }    
+
+    function setModularSwapRouter(IModularSwapRouter newModularSwapRouter) external onlyRole(MANAGER_ROLE) notLocked() {
         modularSwapRouter = newModularSwapRouter;
 
         emit UpdateModularSwapRouter(address(newModularSwapRouter));
     }
 
-    function setTokenToLiquidityPool(address token, address liquidityPoolAddress) external onlyRole(MANAGER_ROLE) {
+    function setTokenToLiquidityPool(address token, address liquidityPoolAddress) external onlyRole(MANAGER_ROLE) notLocked() {
         tokenToLiquidityPool[token] = liquidityPoolAddress;
 
         emit UpdateTokenToLiquidityPool(token, liquidityPoolAddress);
     }
 
-    function setAvailableTokenToLiquidityPool(address[] memory _availableTokenToLiquidityPool) external onlyRole(MANAGER_ROLE) {
+    function setAvailableTokenToLiquidityPool(address[] memory _availableTokenToLiquidityPool) external onlyRole(MANAGER_ROLE) notLocked() {
         availableTokenToLiquidityPool = _availableTokenToLiquidityPool;
 
         emit UpdateAvailableTokenToLiquidityPool(_availableTokenToLiquidityPool);
     }
 
-    function setAvailableErc20(address[] memory _availableErc20) external onlyRole(MANAGER_ROLE) {
+    function setAvailableErc20(address[] memory _availableErc20) external onlyRole(MANAGER_ROLE) notLocked() {
         availableErc20 = _availableErc20;
 
         emit UpdateAvailableErc20(_availableErc20);
     }
 
-    function setIsAvailableErc20(address token, bool value) external onlyRole(MANAGER_ROLE) {
+    function setIsAvailableErc20(address token, bool value) external onlyRole(MANAGER_ROLE) notLocked() {
         isAvailableErc20[token] = value;
 
         emit UpdateIsAvailableErc20(token, value);
     }
     
-    function setAvailableErc721(address[] memory _availableErc721) external onlyRole(MANAGER_ROLE) {
+    function setAvailableErc721(address[] memory _availableErc721) external onlyRole(MANAGER_ROLE) notLocked() {
         availableErc721 = _availableErc721;
 
         emit UpdateAvailableErc721(availableErc721);
     }
 
-    function setIsAvailableErc721(address token, bool value) external onlyRole(MANAGER_ROLE) {
+    function setIsAvailableErc721(address token, bool value) external onlyRole(MANAGER_ROLE) notLocked() {
         isAvailableErc721[token] = value;
 
         emit UpdateIsAvailableErc721(token, value);
