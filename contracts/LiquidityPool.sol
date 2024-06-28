@@ -234,7 +234,9 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
     }
 
     function getTotalLiquidity() public view returns (uint) {
-        return poolToken.balanceOf(address(this)) + totalBorrows();
+        uint nowTotalBorrows = totalBorrows();
+        uint insurancePoolLiquidity = ((nowTotalBorrows - netDebt) * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT;
+        return poolToken.balanceOf(address(this)) + nowTotalBorrows - insurancePoolLiquidity;
     }
 
     // PRIVATE FUNCTIONS //
