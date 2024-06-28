@@ -196,6 +196,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
     }
 
     function borrow(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
+        require(isAvailableErc20[token], "Token is not available");
         address liquifityPoolAddress = tokenToLiquidityPool[token];       
         require(liquifityPoolAddress != address(0), "Token is not supported");
 
