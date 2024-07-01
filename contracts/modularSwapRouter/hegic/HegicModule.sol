@@ -45,13 +45,12 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
     function liquidate(uint[] memory value, address holder) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
         for (uint i; i < value.length; i++) {
             uint profit = getPayOffAmount(value[i]);
-            hegicPositionManager.transferFrom(marginAccount, address(this), value[i]);
             if (profit > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
                 operationalTreasury.payOff(value[i], marginAccount);
                 uint amountOutMinimum = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
                 amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, amountOutMinimum);
             } 
-            hegicPositionManager.transferFrom(address(this), holder, value[i]);
+            hegicPositionManager.transferFrom(marginAccount, holder, value[i]);
         }
     }
 
