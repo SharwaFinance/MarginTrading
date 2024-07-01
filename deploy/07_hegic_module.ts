@@ -19,14 +19,13 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const MODULAR_SWAP_ROUTER_ROLE = keccak256(toUtf8Bytes("MODULAR_SWAP_ROUTER_ROLE"));
 
   const assetExchangerUSDCetoUSDC = await deploy("USDCe_USDC_UniswapModule", {
-    contract: "UniswapModule",
+    contract: "UniswapModuleWithoutChainlink",
     from: deployer,
     log: true,
     args: [
       MarginAccount.address,
       USDCe.address,
       USDC.address,
-      ZeroAddress,
       SwapRouter.address,
       Quoter.address,
       solidityPacked(["address", "uint24", "address"], [USDCe.address, 3000, USDC.address])

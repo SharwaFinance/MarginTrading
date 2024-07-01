@@ -15,6 +15,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const USDC = await get("USDC")
   const AggregatorV3_WETH_USDC = await get("MockAggregatorV3_WETH_USDC")
   const AggregatorV3_WBTC_USDC = await get("MockAggregatorV3_WBTC_USDC")
+  const SequencerUptimeFeed = await get("SequencerUptimeFeed")
 
   const MODULAR_SWAP_ROUTER_ROLE = keccak256(toUtf8Bytes("MODULAR_SWAP_ROUTER_ROLE"));
   const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
@@ -37,19 +38,36 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   async function deployUniswapModule(tokenIn: string, tokenOut: string, path: string, aggregatorV3: string) {
     // console.log(`path ${tokenIn}_${tokenOut}`, path)
     const contractName = `${tokenIn}_${tokenOut}_UniswapModule`
-    const module = await deploy(contractName, {
-      contract: "UniswapModule",
-      from: deployer,
-      log: true,
-      args: [
+
+    let contract = "UniswapModuleWithoutChainlink"
+    let args = [
+      MarginAccount.address,
+      contractsMap.get(tokenIn),
+      contractsMap.get(tokenOut),
+      SwapRouter.address,
+      Quoter.address,
+      path
+    ]
+
+    if (aggregatorV3 != ZeroAddress) {
+      contract = "UniswapModuleWithChainlink"
+      args = [
         MarginAccount.address,
         contractsMap.get(tokenIn),
         contractsMap.get(tokenOut),
         aggregatorV3,
+        SequencerUptimeFeed.address,
         SwapRouter.address,
         Quoter.address,
         path
-      ],
+      ]
+    }
+
+    const module = await deploy(contractName, {
+      contract: contract,
+      from: deployer,
+      log: true,
+      args: args,
     })
 
     await execute(

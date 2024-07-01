@@ -53,5 +53,6 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         )
     {
         answer = mockAnswer;
+        updatedAt = block.timestamp;
     }
 }

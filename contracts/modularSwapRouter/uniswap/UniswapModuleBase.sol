@@ -6,7 +6,6 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import "hardhat/console.sol";
 
 /**
  * @title UniswapModule
@@ -15,7 +14,7 @@ import "hardhat/console.sol";
  * It uses AccessControl for role-based access management and integrates with Uniswap's swap router and quoter.
  * @author 0nika0
  */
-contract UniswapModule is IPositionManagerERC20, AccessControl {
+abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant MODULAR_SWAP_ROUTER_ROLE = keccak256("MODULAR_SWAP_ROUTER_ROLE");
 
@@ -25,7 +24,6 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
 
     address public tokenInContract;
     address public tokenOutContract;
-    address public chainlinkPricer;
 
     ISwapRouter public swapRouter;
     IQuoter public quoter;
@@ -34,7 +32,6 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
         address _marginAccount,
         address _tokenInContract,
         address _tokenOutContract,
-        address _chainlinkPricer, 
         ISwapRouter _swapRouter,
         IQuoter _quoter,
         bytes memory _uniswapPath
@@ -42,7 +39,6 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
         marginAccount = _marginAccount;
         tokenInContract = _tokenInContract;
         tokenOutContract = _tokenOutContract;
-        chainlinkPricer = _chainlinkPricer;
         swapRouter = _swapRouter;
         quoter = _quoter;
         uniswapPath = _uniswapPath;
@@ -62,18 +58,7 @@ contract UniswapModule is IPositionManagerERC20, AccessControl {
 
     // VIEW FUNCTIONS //
 
-    function getPositionValue(uint256 amountIn) external returns (uint amountOut) {
-        require(chainlinkPricer != address(0), "invalid module");
-        (, int256 latestPrice, , , ) = AggregatorV3Interface(chainlinkPricer).latestRoundData();
-        require(latestPrice != 0, "invalid price");
-        uint tokenInDecimals = ERC20(tokenInContract).decimals();
-        uint tokenOutDecimals = ERC20(tokenOutContract).decimals();
-        uint chainlinkDecimals = AggregatorV3Interface(chainlinkPricer).decimals();
-        require(chainlinkDecimals>tokenOutDecimals, "invalid tokenOut");
-        uint diffDecimals = chainlinkDecimals-tokenOutDecimals;
-
-        return amountIn*uint256(latestPrice)/(10**tokenInDecimals)/(10**diffDecimals);
-    }
+    function getPositionValue(uint256 amountIn) external virtual returns (uint amountOut) {}
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
         ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);

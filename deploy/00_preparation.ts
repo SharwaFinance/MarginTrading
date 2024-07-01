@@ -86,6 +86,8 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
         await deploy("MockAggregatorV3_WETH_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("4000", 8)]})
         await deploy("MockAggregatorV3_WBTC_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("60000", 8)]})
 
+        await deploy("SequencerUptimeFeed", {contract: "MockAggregatorV3", from: deployer, log: true, args: [0, 0]})
+
     } else {
         save("USDCe", {
             address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
