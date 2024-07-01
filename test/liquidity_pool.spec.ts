@@ -840,7 +840,7 @@ describe("liquidity_pool.spec.sol", function () {
       expect(
         await liquidityPoolUSDC.totalBorrows(),
         "The erroneous value of the entire debt of traders"
-      ).to.equal(ethers.parseUnits("225000001", 0));
+      ).to.equal(ethers.parseUnits("225000000", 0));
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
@@ -864,6 +864,10 @@ describe("liquidity_pool.spec.sol", function () {
       expect(
         await liquidityPoolUSDC.portfolioIdToDebt(ethers.parseUnits("1", 0)),
         "The value of portfolioIdToDebt must be equal to 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      expect(
+        await liquidityPoolUSDC.totalInterestSnapshot(),
+        "The value of totalInterestSnapshot must be equal to 0"
       ).to.equal(ethers.parseUnits("0", 0));
     });
   });

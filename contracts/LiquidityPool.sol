@@ -175,21 +175,21 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             "The block number has not reached a value that allows to repay loan!"
         );
         uint newTotalBorrows = totalBorrows();
-        uint newTotalInterestSnapshot = newTotalBorrows - netDebt;
-        uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only
+        uint accruedInterest = newTotalBorrows * shareOfDebt[marginAccountID] / debtSharesSum - portfolioIdToDebt[marginAccountID]; // Accrued interest only
         uint debt = portfolioIdToDebt[marginAccountID] + accruedInterest;
+        uint shareChange = debtSharesSum * amount / newTotalBorrows; // Trader's share to be given away
         if (debt < amount) {
             // If you try to return more tokens than were borrowed, the required amount will be taken to repay the debt, the rest will remain untouched
             amount = debt;
+            shareChange = shareOfDebt[marginAccountID];
         }
-        uint shareChange = debtSharesSum.mulDiv(amount, newTotalBorrows, Math.Rounding.Up); // Trader's share to be given away
         uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID];
         uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT;
         totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum;
         debtSharesSum -= shareChange;
         shareOfDebt[marginAccountID] -= shareChange;
         if (debt > amount) {
-            uint tempDebt = Math.mulDiv(portfolioIdToDebt[marginAccountID], debt - amount, debt, Math.Rounding.Up);
+            uint tempDebt = portfolioIdToDebt[marginAccountID] * (debt - amount) / debt;
             netDebt = netDebt - (portfolioIdToDebt[marginAccountID] - tempDebt);
             portfolioIdToDebt[marginAccountID] = tempDebt;
         } else {
