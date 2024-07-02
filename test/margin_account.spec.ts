@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
+import { PreparationResult, prepareContracts } from "../utils/prepareContracts"
 import { ZeroAddress, keccak256, toUtf8Bytes } from "ethers";
 
 describe("margin_account.spec.ts", function () {
   let c: PreparationResult
 
   beforeEach(async () => {
-    c = await preparationContracts()
+    c = await prepareContracts()
   })
   
   describe("AccessControl", async () => {

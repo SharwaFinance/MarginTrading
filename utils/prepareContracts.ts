@@ -9,7 +9,7 @@ import {
     LiquidityPool,
     SwapRouterMock,
     ModularSwapRouter,
-    UniswapModule,
+    UniswapModuleWithChainlink,
     QuoterMock,
     MockAggregatorV3
   } from "../typechain-types";
@@ -28,7 +28,7 @@ export interface PreparationResult {
     MarginAccountManager: MarginAccountManager;
     SwapRouterMock: SwapRouterMock;
     ModularSwapRouter: ModularSwapRouter;
-    UniswapModule_WETH_USDC: UniswapModule;
+    UniswapModule_WETH_USDC: UniswapModuleWithChainlink;
     QuoterMock: QuoterMock;
     MockAggregatorV3_WETH_USDC: MockAggregatorV3;
     MockAggregatorV3_WBTC_USDC: MockAggregatorV3;
@@ -41,7 +41,7 @@ export interface PreparationResult {
     insurance: Signer;
 }
 
-export async function preparationContracts():  Promise<PreparationResult> {
+export async function prepareContracts():  Promise<PreparationResult> {
     let WETH_LiquidityPool: LiquidityPool
     let WBTC_LiquidityPool: LiquidityPool
     let USDC_LiquidityPool: LiquidityPool
@@ -53,7 +53,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     let MarginAccountManager: MarginAccountManager
     let SwapRouterMock: SwapRouterMock
     let ModularSwapRouter: ModularSwapRouter
-    let UniswapModule_WETH_USDC: UniswapModule 
+    let UniswapModule_WETH_USDC: UniswapModuleWithChainlink 
     let QuoterMock: QuoterMock
     let MockAggregatorV3_WETH_USDC: MockAggregatorV3;
     let MockAggregatorV3_WBTC_USDC: MockAggregatorV3;
@@ -95,7 +95,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     await USDC.connect(deployer).mint(USDCmintAmount)
     await USDC.connect(deployer).approve(await MarginAccount.getAddress(), USDCmintAmount)
 
-    // preparation insurancePool // 
+    // prepare insurancePool // 
 
     WETHmintAmount = WETHmintAmount*BigInt(10)
     WBTCmintAmount = WBTCmintAmount*BigInt(10)
@@ -110,7 +110,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     await USDC.connect(insurance).mint(USDCmintAmount)
     await USDC.connect(insurance).approve(await MarginAccount.getAddress(), USDCmintAmount)
 
-    // preparation SwapRouter // 
+    // prepare SwapRouter // 
 
     SwapRouterMock = await ethers.getContract("SwapRouter")
     await WETH.connect(deployer).mintTo(await SwapRouterMock.getAddress(), WETHmintAmount*BigInt(10))
@@ -118,7 +118,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     await USDC.connect(deployer).mintTo(await SwapRouterMock.getAddress(), USDCmintAmount*BigInt(10))
     await USDCe.connect(deployer).mintTo(await SwapRouterMock.getAddress(), USDCmintAmount*BigInt(10))
 
-    // preparation pools //
+    // prepare pools //
 
     WETH_LiquidityPool = await ethers.getContract("WETH_LiquidityPool")
     WBTC_LiquidityPool = await ethers.getContract("WBTC_LiquidityPool")
@@ -136,7 +136,7 @@ export async function preparationContracts():  Promise<PreparationResult> {
     await WBTC_LiquidityPool.connect(deployer).provide(WBTCmintAmount)
     await USDC_LiquidityPool.connect(deployer).provide(USDCmintAmount)
     
-    // preparation hegic //
+    // prepare hegic //
 
     MockHegicStrategy = await ethers.getContract("MockHegicStrategy")
     MockOperationalTreasury = await ethers.getContract("OperationalTreasury")

@@ -61,13 +61,13 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     function getPositionValue(uint256 amountIn) external virtual returns (uint amountOut) {}
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
-        ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
+        ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
 
         amountOut = quoter.quoteExactInput(params.path, amountIn);
     }
 
     function getOutputPositionValue(uint256 amountOut) public returns (uint amountIn) {
-        ISwapRouter.ExactOutputParams memory params = _preparationOutputParams(amountOut);
+        ISwapRouter.ExactOutputParams memory params = _prepareOutputParams(amountOut);
 
         amountIn = quoter.quoteExactOutput(params.path, amountOut);
     }
@@ -88,7 +88,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
 
         ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
-        ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
+        ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
 
         amountOut = swapRouter.exactInput(params);
         ERC20(tokenOutContract).transfer(marginAccount, amountOut);
@@ -97,7 +97,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     function swapInput(uint amountIn, uint amountOutMinimum) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
         ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
 
-        ISwapRouter.ExactInputParams memory params = _preparationInputParams(amountIn);
+        ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
         params.amountOutMinimum = amountOutMinimum;
 
         amountOut = swapRouter.exactInput(params);
@@ -106,7 +106,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     }
 
     function swapOutput(uint amountOut) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountIn) {
-        ISwapRouter.ExactOutputParams memory params = _preparationOutputParams(amountOut);
+        ISwapRouter.ExactOutputParams memory params = _prepareOutputParams(amountOut);
 
         amountIn = getOutputPositionValue(amountOut);
         params.amountInMaximum = amountIn;
@@ -124,7 +124,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
      * @param amount The amount of input tokens.
      * @return params The prepared ExactInputParams struct.
      */
-    function _preparationInputParams(uint256 amount) private view returns(ISwapRouter.ExactInputParams memory params) {
+    function _prepareInputParams(uint256 amount) private view returns(ISwapRouter.ExactInputParams memory params) {
         params = ISwapRouter.ExactInputParams({
             path: uniswapPath,
             recipient: address(this),
@@ -139,7 +139,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
      * @param amount The amount of output tokens.
      * @return params The prepared ExactOutputParams struct.
      */
-    function _preparationOutputParams(uint256 amount) private view returns(ISwapRouter.ExactOutputParams memory params) {
+    function _prepareOutputParams(uint256 amount) private view returns(ISwapRouter.ExactOutputParams memory params) {
         params = ISwapRouter.ExactOutputParams({
             path: uniswapPath,
             recipient: address(this),

@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
+import { PreparationResult, prepareContracts } from "../utils/prepareContracts"
 import { keccak256, toUtf8Bytes, solidityPacked } from "ethers";
 
 describe("modular_swap_router.spec.ts", function () {
   let c: PreparationResult
 
   beforeEach(async () => {
-    c = await preparationContracts()
+    c = await prepareContracts()
   })
   
   describe("AccessControl", async () => {

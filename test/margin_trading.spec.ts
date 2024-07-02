@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { parseUnits, ZeroAddress, keccak256, toUtf8Bytes, MaxUint256 } from "ethers";
 import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { PreparationResult, preparationContracts } from "../utils/prepareContracts"
+import { PreparationResult, prepareContracts } from "../utils/prepareContracts"
 
 describe("margin_trading.spec.ts", function () {
   let c: PreparationResult
 
   beforeEach(async () => {
-    c = await preparationContracts()
+    c = await prepareContracts()
   })
 
   it("User registration test", async () => {
