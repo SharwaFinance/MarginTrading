@@ -270,12 +270,12 @@ contract MarginAccount is IMarginAccount, AccessControl {
      * @param tokenID The ID of the token to delete.
      */
     function _deleteERC721TokenFromContractList(uint marginAccountID, address token, uint tokenID) private {
-        uint[] storage userTokesByContract = erc721ByContract[marginAccountID][token];
+        uint[] storage userTokensByContract = erc721ByContract[marginAccountID][token];
 
-        for(uint i = 0; i < userTokesByContract.length; i++) {
-            if(userTokesByContract[i] == tokenID) {
-                userTokesByContract[i] = userTokesByContract[userTokesByContract.length - 1]; 
-                userTokesByContract.pop(); 
+        for(uint i = 0; i < userTokensByContract.length; i++) {
+            if(userTokensByContract[i] == tokenID) {
+                userTokensByContract[i] = userTokensByContract[userTokensByContract.length - 1]; 
+                userTokensByContract.pop(); 
                 return;
             }
         }

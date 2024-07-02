@@ -74,7 +74,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         (
             IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
             IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-        ) = prepareTokesParams(marginAccountID, BASE_TOKEN);
+        ) = prepareTokensParams(marginAccountID, BASE_TOKEN);
         marginAccountValue = modularSwapRouter.calculateTotalPositionValue(erc20Params,erc721Params);
     }
 
@@ -82,7 +82,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         (
             IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
             IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
-        ) = prepareTokesParamsByDebt(marginAccountID, BASE_TOKEN);
+        ) = prepareTokensParamsByDebt(marginAccountID, BASE_TOKEN);
         debtSizeInUSDC += modularSwapRouter.calculateTotalPositionValue(erc20Params, erc721Params);
     }
 
@@ -206,7 +206,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         marginAccountRatio = marginAccountValue*COEFFICIENT_DECIMALS/debtWithAccruedInterest;
     }
 
-    function prepareTokesParams(uint marginAccountID, address baseToken) public view returns (
+    function prepareTokensParams(uint marginAccountID, address baseToken) public view returns (
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
     ) {
@@ -225,7 +225,7 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
         }
     }
 
-    function prepareTokesParamsByDebt(uint marginAccountID, address baseToken) public view returns (
+    function prepareTokensParamsByDebt(uint marginAccountID, address baseToken) public view returns (
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
     ) {

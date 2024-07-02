@@ -56,7 +56,7 @@ interface IMarginTrading {
      * @return erc20Params The array of ERC20 position info.
      * @return erc721Params The array of ERC721 position info.
      */    
-    function prepareTokesParams(uint marginAccountID, address baseToken) external view returns (
+    function prepareTokensParams(uint marginAccountID, address baseToken) external view returns (
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
     );
@@ -68,7 +68,7 @@ interface IMarginTrading {
      * @return erc20Params The array of ERC20 position info based on debt.
      * @return erc721Params An empty array of ERC721 position info.
      */    
-    function prepareTokesParamsByDebt(uint marginAccountID, address baseToken) external view returns (
+    function prepareTokensParamsByDebt(uint marginAccountID, address baseToken) external view returns (
         IModularSwapRouter.ERC20PositionInfo[] memory erc20Params, 
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
     );
