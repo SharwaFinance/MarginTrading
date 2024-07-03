@@ -93,8 +93,8 @@ contract MarginAccount is IMarginAccount, AccessControl {
     }
 
     function checkLiquidityPool(address token) external view returns (bool isValid) {
-        address liquifityPoolAddress = tokenToLiquidityPool[token];
-        isValid = liquifityPoolAddress != address(0);       
+        address liquidityPoolAddress = tokenToLiquidityPool[token];
+        isValid = liquidityPoolAddress != address(0);       
     }
 
     // ONLY MANAGER_ROLE FUNCTIONS //
@@ -198,18 +198,18 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     function borrow(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
         require(isAvailableErc20[token], "Token you are attempting to deposit is not available for deposit");
-        address liquifityPoolAddress = tokenToLiquidityPool[token];       
-        require(liquifityPoolAddress != address(0), "Token is not supported");
+        address liquidityPoolAddress = tokenToLiquidityPool[token];       
+        require(liquidityPoolAddress != address(0), "Token is not supported");
 
         erc20ByContract[marginAccountID][token] += amount;
-        ILiquidityPool(liquifityPoolAddress).borrow(marginAccountID, amount);
+        ILiquidityPool(liquidityPoolAddress).borrow(marginAccountID, amount);
     }
 
     function repay(uint marginAccountID, address token, uint amount) external onlyRole(MARGIN_TRADING_ROLE) {
-        address liquifityPoolAddress = tokenToLiquidityPool[token];    
-        require(liquifityPoolAddress != address(0), "Token is not supported");
+        address liquidityPoolAddress = tokenToLiquidityPool[token];    
+        require(liquidityPoolAddress != address(0), "Token is not supported");
 
-        uint debtWithAccruedInterest = ILiquidityPool(liquifityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
+        uint debtWithAccruedInterest = ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
         if (amount == 0 || amount > debtWithAccruedInterest) {
             amount = debtWithAccruedInterest;
         }
@@ -217,7 +217,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         require(amount <= erc20ByContract[marginAccountID][token], "Insufficient funds to repay the debt");
         
         erc20ByContract[marginAccountID][token] -= amount;
-        ILiquidityPool(liquifityPoolAddress).repay(marginAccountID, amount);
+        ILiquidityPool(liquidityPoolAddress).repay(marginAccountID, amount);
     }
 
     function liquidate(uint marginAccountID, address baseToken, address marginAccountOwner, address liquidator) external onlyRole(MARGIN_TRADING_ROLE) {
