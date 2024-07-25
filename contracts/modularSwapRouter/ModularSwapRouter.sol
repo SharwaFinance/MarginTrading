@@ -130,7 +130,7 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
                 erc20Params[i].tokenOut == marginTradingBaseToken
             ) {
                 amountOut += erc20Params[i].value;
-            } else if (moduleAddress != address(0)) {
+            } else if (moduleAddress != address(0)  && erc20Params[i].value != 0) {
                 amountOut += IPositionManagerERC20(moduleAddress).liquidate(erc20Params[i].value);
             }
         }
