@@ -76,7 +76,11 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
     function getOptionValue(uint id) public returns (uint positionValue) {
         if (isOptionActive(id) && getExpirationTime(id) > block.timestamp) {
             uint profit = getPayOffAmount(id);
-            positionValue = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+            if (profit == 0) {
+                positionValue = 0;    
+            } else {
+                positionValue = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+            }
         }
     }
 

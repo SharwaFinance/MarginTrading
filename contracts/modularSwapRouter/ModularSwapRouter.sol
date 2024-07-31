@@ -52,8 +52,12 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
         if (tokenIn == marginTradingBaseToken && tokenOut == marginTradingBaseToken) {
             amountOut = amountIn;
         } else {
-            address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
-            amountOut = IPositionManagerERC20(moduleAddress).getInputPositionValue(amountIn);
+            if (amountIn == 0) {
+                amountOut = 0;
+            } else {
+                address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
+                amountOut = IPositionManagerERC20(moduleAddress).getInputPositionValue(amountIn);
+            }
         }
     }
 

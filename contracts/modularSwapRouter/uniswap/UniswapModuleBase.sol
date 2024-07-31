@@ -61,6 +61,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     function getPositionValue(uint256 amountIn) external virtual returns (uint amountOut) {}
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
+        require(amountIn > 0, "invalid amountIn");
         ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
 
         amountOut = quoter.quoteExactInput(params.path, amountIn);
