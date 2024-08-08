@@ -175,21 +175,21 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             "The block number has not reached a value that allows to repay loan!"
         );
         uint newTotalBorrows = totalBorrows();
-        uint accruedInterest = newTotalBorrows * shareOfDebt[marginAccountID] / debtSharesSum - portfolioIdToDebt[marginAccountID]; // Accrued interest only
+        uint newTotalInterestSnapshot = newTotalBorrows - netDebt;
+        uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only
         uint debt = portfolioIdToDebt[marginAccountID] + accruedInterest;
-        uint shareChange = debtSharesSum * amount / newTotalBorrows; // Trader's share to be given away
         if (debt < amount) {
             // If you try to return more tokens than were borrowed, the required amount will be taken to repay the debt, the rest will remain untouched
             amount = debt;
-            shareChange = shareOfDebt[marginAccountID];
         }
+        uint shareChange = shareOfDebt[marginAccountID].mulDiv(amount, debt, Math.Rounding.Up); // Trader's share to be given away
         uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID];
         uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT;
         totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum;
         debtSharesSum -= shareChange;
         shareOfDebt[marginAccountID] -= shareChange;
         if (debt > amount) {
-            uint tempDebt = portfolioIdToDebt[marginAccountID] * (debt - amount) / debt;
+            uint tempDebt = Math.mulDiv(portfolioIdToDebt[marginAccountID], debt - amount, debt, Math.Rounding.Up);
             netDebt = netDebt - (portfolioIdToDebt[marginAccountID] - tempDebt);
             portfolioIdToDebt[marginAccountID] = tempDebt;
         } else {
@@ -201,7 +201,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             poolToken.transfer(insurancePool, profitInsurancePool);
         }
 
-        emit Repay(marginAccountID, amount, profit);
+        emit Repay(marginAccountID, amount, profit-profitInsurancePool);
     }
 
     // VIEW FUNCTIONS //
@@ -222,12 +222,14 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         );
         uint newTotalBorrow = ((netDebt + totalInterestSnapshot) *
                 intoUint256(pow(temp, div(convert(checkTime - totalBorrowsSnapshotTimestamp), convert(ONE_YEAR_SECONDS))))) / 1e18;
-        return (newTotalBorrow * shareOfDebt[marginAccountID]) / debtSharesSum;
+        uint newTotalInterestSnapshot = newTotalBorrow - netDebt;
+        return portfolioIdToDebt[marginAccountID] + (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
 
     function getDebtWithAccruedInterest(uint marginAccountID) external view returns (uint debtByPool) {
         if (debtSharesSum == 0) return 0;
-        return (totalBorrows() * shareOfDebt[marginAccountID]) / debtSharesSum;
+        uint newTotalInterestSnapshot = totalBorrows() - netDebt;
+        return portfolioIdToDebt[marginAccountID] + (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
 
     // PUBLIC FUNCTIONS //

@@ -467,7 +467,7 @@ describe("liquidity_pool.spec.sol", function () {
         .withArgs(
           ethers.parseUnits("1", 0),
           returnAmount,
-          ethers.parseUnits("133680", 0)
+          ethers.parseUnits("126996", 0)
         );
 
       await liquidityPoolUSDC
@@ -840,7 +840,7 @@ describe("liquidity_pool.spec.sol", function () {
       expect(
         await liquidityPoolUSDC.totalBorrows(),
         "The erroneous value of the entire debt of traders"
-      ).to.equal(ethers.parseUnits("225000000", 0));
+      ).to.equal(ethers.parseUnits("225000001", 0));
 
       await marginTrading.connect(firstTrader).repay(
         ethers.parseUnits("1", 0),
