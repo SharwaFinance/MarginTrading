@@ -870,6 +870,95 @@ describe("liquidity_pool.spec.sol", function () {
         "The value of totalInterestSnapshot must be equal to 0"
       ).to.equal(ethers.parseUnits("0", 0));
     });
+
+    it("(repay) full repayment of the position of several traders", async function () {
+      await USDC
+        .transfer(await marginTrading.getAddress(), ethers.parseUnits("2000", 6));
+
+      const amountFirstInvestor = ethers.parseUnits("1000", 6);
+      await USDC
+        .connect(firstInvestor)
+        .approve(await liquidityPoolUSDC.getAddress(), amountFirstInvestor);
+      await liquidityPoolUSDC
+        .connect(firstInvestor)
+        .provide(amountFirstInvestor);
+
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("300", 6)
+        );
+      await marginTrading
+        .connect(secondTrader)
+        .borrow(
+          ethers.parseUnits("2", 0),
+          ethers.parseUnits("200", 6)
+        );
+      await marginTrading
+        .connect(secondInvestor)
+        .borrow(
+          ethers.parseUnits("3", 0),
+          ethers.parseUnits("100", 6)
+        );
+
+      await time.increaseTo(await time.latest() + 60 * 60 * 24 * 365);
+      
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("2", 0),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await USDC.getAddress(),
+        ethers.parseUnits("50", 6)
+      );
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("2", 0),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await USDC.getAddress(),
+        ethers.parseUnits("50", 6)
+      );
+      
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("2", 0),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await USDC.getAddress(),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1)
+      );
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("3", 0),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("3", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await USDC.getAddress(),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("3", 0), await time.latest() + 1)
+      );
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("1", 0),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await USDC.getAddress(),
+        await liquidityPoolUSDC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolUSDC.debtSharesSum(),
+        "The value of debtSharesSum must be equal to 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      expect(
+        await liquidityPoolUSDC.netDebt(),
+        "The value of netDebt must be equal to 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      expect(
+        await liquidityPoolUSDC.totalBorrows(),
+        "The value of totalBorrows must be equal to 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      for (let i = 0; i < 3; i++) {
+        expect(
+          await liquidityPoolUSDC.portfolioIdToDebt(ethers.parseUnits("" + i, 0)),
+          "The value of portfolioIdToDebt must be equal to 0"
+        ).to.equal(ethers.parseUnits("0", 0));
+        expect(
+          await liquidityPoolUSDC.shareOfDebt(ethers.parseUnits("" + i, 0)),
+          "The value of portfolioIdToDebt must be equal to 0"
+        ).to.equal(ethers.parseUnits("0", 0));
+      }
+    });
   });
   describe("Check traders functionality negative", function () {
     it("(repay) T-4 Tried to take more tokens than the maximumBorrowMultiplier deterrent rate", async function () {
