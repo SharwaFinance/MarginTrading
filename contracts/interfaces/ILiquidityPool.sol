@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-interface ILiquidityPool {
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface ILiquidityPool is IERC20{
 
     // ONLY MANAGER_ROLE FUNCTIONS //
 
@@ -91,6 +93,10 @@ interface ILiquidityPool {
      * @return value The total liquidity.
      */    
     function getTotalLiquidity() external view returns (uint);
+
+    // PUBLIC FUNCTIONS //
+
+    function maximumBorrowMultiplier() external returns (uint maximumBorrowMultiplier);
 
     // EVENTS //
 

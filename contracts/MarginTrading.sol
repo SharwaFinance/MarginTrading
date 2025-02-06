@@ -1,5 +1,24 @@
 pragma solidity 0.8.20;
 
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 import {IModularSwapRouter} from "./interfaces/modularSwapRouter/IModularSwapRouter.sol";
 import {IMarginAccountManager} from "./interfaces/IMarginAccountManager.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -104,7 +123,8 @@ contract MarginTrading is IMarginTrading, AccessControl, ReentrancyGuard {
 
     function provideERC721(uint marginAccountID, address token, uint collateralTokenID) external nonReentrant onlyApprovedOrOwner(marginAccountID) {
         require(modularSwapRouter.checkValidityERC721(token, BASE_TOKEN, collateralTokenID), "token id is not valid");
-        marginAccount.provideERC721(marginAccountID, msg.sender, token, collateralTokenID);
+        require(modularSwapRouter.checkStrategy(BASE_TOKEN, token, collateralTokenID), "Invalid strategy");
+        marginAccount.provideERC721(marginAccountID, msg.sender, BASE_TOKEN, token, collateralTokenID);
 
         emit ProvideERC721(marginAccountID, msg.sender, token, collateralTokenID);
     }

@@ -1,5 +1,24 @@
 pragma solidity 0.8.20;
 
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 import {IPositionManagerERC721} from "../interfaces/modularSwapRouter/IPositionManagerERC721.sol";
 import {IPositionManagerERC20} from "../interfaces/modularSwapRouter/IPositionManagerERC20.sol"; 
 import {IModularSwapRouter} from "../interfaces/modularSwapRouter/IModularSwapRouter.sol";
@@ -19,6 +38,9 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
 
     IMarginTrading public immutable marginTrading;
 
+    mapping(address => bool) public availebleStrategy;
+    mapping(address => mapping(address => address)) public tokenInToTokenOutToExchange;
+
     constructor(
         IMarginTrading _marginTrading
     ) {
@@ -27,12 +49,27 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    mapping(address => mapping(address => address)) public tokenInToTokenOutToExchange;
+    // ONLY MANAGER_ROLE FUNCTIONS //
+
+    function setAvailebleStrategy(address strtegyAddress, bool value) external onlyRole(MANAGER_ROLE) {
+        availebleStrategy[strtegyAddress] = value;
+    }  
 
     // VIEW FUNCTINOS //
 
     function getModuleAddress(address tokenIn, address tokenOut) external view returns(address) {
         return tokenInToTokenOutToExchange[tokenIn][tokenOut];
+    }
+
+    function checkStrategy(address tokenIn, address tokenOut, uint tokenID) external view returns(bool) {
+        return availebleStrategy[getStrategy(tokenIn, tokenOut, tokenID)];
+    }
+
+    function getStrategy(address tokenIn, address tokenOut, uint tokenID) public view returns (address strategy) {
+        address moduleAddress = tokenInToTokenOutToExchange[tokenIn][tokenOut];
+        if (moduleAddress != address(0)) {
+            strategy = IPositionManagerERC721(moduleAddress).getStrategy(tokenID);
+        }
     }
 
     // EXTERNAL FUNCTIONS //
@@ -121,7 +158,7 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
 
     // ONLY MARGIN_ACCOUNT_ROLE FUNCTIONS //
 
-    function liquidate(ERC20PositionInfo[] memory erc20Params, ERC721PositionInfo[] memory erc721Params) 
+    function liquidate(uint marginAccountID, ERC20PositionInfo[] memory erc20Params, ERC721PositionInfo[] memory erc721Params) 
         external
         onlyRole(MARGIN_ACCOUNT_ROLE)   
         returns(uint amountOut)  
@@ -133,16 +170,19 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
                 erc20Params[i].tokenIn == marginTradingBaseToken &&
                 erc20Params[i].tokenOut == marginTradingBaseToken
             ) {
-                amountOut += erc20Params[i].value;
-            } else if (moduleAddress != address(0)  && erc20Params[i].value != 0) {
-                amountOut += IPositionManagerERC20(moduleAddress).liquidate(erc20Params[i].value);
+                uint liquiateAmount = erc20Params[i].value; 
+                amountOut += liquiateAmount;
+            } else if (moduleAddress != address(0) && erc20Params[i].value != 0) {
+                uint liquiateAmount = IPositionManagerERC20(moduleAddress).liquidate(erc20Params[i].value); 
+                amountOut += liquiateAmount;
             }
+            emit LiquidateERC20(marginAccountID, erc20Params[i].tokenIn, erc20Params[i].tokenOut, amountOut);
         }
 
         for (uint i; i < erc721Params.length; i++) {
             address moduleAddress = tokenInToTokenOutToExchange[erc721Params[i].tokenIn][erc721Params[i].tokenOut];
             if (moduleAddress != address(0)) {
-                amountOut += IPositionManagerERC721(moduleAddress).liquidate(erc721Params[i].value, erc721Params[i].holder);
+                amountOut += IPositionManagerERC721(moduleAddress).liquidate(marginAccountID, erc721Params[i].value, erc721Params[i].holder);
             }
         }
     }

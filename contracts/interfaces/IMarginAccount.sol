@@ -163,7 +163,7 @@ interface IMarginAccount {
      * @param token The address of the ERC721 token.
      * @param collateralTokenID The ID of the collateral token.
      */    
-    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID) external;
+    function provideERC721(uint marginAccountID, address txSender, address baseToken, address token, uint collateralTokenID) external;
 
     /**
      * @dev Withdraws ERC20 tokens from a margin account.
@@ -316,6 +316,14 @@ interface IMarginAccount {
         uint marginAccountID,
         uint amountIn,
         uint amountOut
+    );
+
+    event Exercise(
+        uint indexed marginAccountID,
+        uint tokenId,
+        address tokenIn,
+        address tokenOut,
+        uint amountIn
     );
 
     event Unlock(

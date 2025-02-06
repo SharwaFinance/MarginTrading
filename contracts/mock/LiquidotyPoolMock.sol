@@ -9,6 +9,8 @@ contract LiquidityPoolMock is ILiquidityPool {
     mapping(uint256 => uint256) public debtMap;
     address private token;
 
+    uint public mockMaximumBorrowMultiplier = 0.8*1e4;
+
     constructor(address _token) {
     	token = _token;
     }
@@ -48,4 +50,16 @@ contract LiquidityPoolMock is ILiquidityPool {
     function getDebtWithAccruedInterestOnTime(uint marginAccountID, uint checkTime) external view returns (uint debtByPool) {}
 
     function getTotalLiquidity() external view returns (uint) {}
+
+    function maximumBorrowMultiplier() external returns (uint maximumBorrowMultiplier) {
+        return mockMaximumBorrowMultiplier;
+    } 
+
+    function allowance(address owner, address spender) external view returns (uint256) {}
+    function approve(address spender, uint256 amount) external returns (bool) {}
+    function balanceOf(address account) external view returns (uint256) {}
+    function totalSupply() external view returns (uint256) {}
+    function transfer(address to, uint256 amount) external returns (bool) {}
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {}
+
 }

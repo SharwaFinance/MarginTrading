@@ -10,7 +10,7 @@ interface IPositionManagerERC721 {
      * @param holder The address of the account to transfer the positions to after liquidation.
      * @return amountOut The total amount of profit received from the liquidation in USDC.
      */
-    function liquidate(uint256[] memory value, address holder) external returns(uint amountOut);
+    function liquidate(uint marginAccountID, uint256[] memory value, address holder) external returns(uint amountOut);
 
     /**
      * @dev Executes the exercise of an option.
@@ -42,6 +42,16 @@ interface IPositionManagerERC721 {
      * @param value An array of option IDs.
      * @return positionValue The total value of the options.
      */    
-    function getPositionValue(uint256[] memory value) external returns (uint positionValue);
+    function getPositionValue(uint256[] memory value) external returns(uint positionValue);
+
+    function getStrategy(uint id) external view returns(address);
+
+    event LiquidateERC721(
+        uint indexed marginAccountID,
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint tokenId,
+        uint amountOut
+    );
 }
     

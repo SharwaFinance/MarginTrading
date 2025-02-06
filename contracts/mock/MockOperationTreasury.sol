@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {IOperationalTreasury} from "../interfaces/modularSwapRouter/hegic/IOperationalTreasury.sol";
-import {IPositionsManager} from "../interfaces/txBuilder/IPositionsManager.sol";
+import {IPositionsManager} from "../interfaces/oneClick/IPositionsManager.sol";
 import {IHegicStrategy} from "../interfaces/modularSwapRouter/hegic/IHegicStrategy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 

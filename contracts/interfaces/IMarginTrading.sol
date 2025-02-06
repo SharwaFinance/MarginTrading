@@ -73,6 +73,10 @@ interface IMarginTrading {
         IModularSwapRouter.ERC721PositionInfo[] memory erc721Params
     );
 
+    function redCoeff() external returns (uint redCoeff);
+
+    function yellowCoeff() external returns (uint yellowCoeff);
+
     // ONLY APPROVE OR OWNER FUNCTIONS //
 
     /**

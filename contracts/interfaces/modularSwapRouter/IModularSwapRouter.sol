@@ -38,6 +38,8 @@ interface IModularSwapRouter {
      */
     function getModuleAddress(address tokenIn, address tokenOut) external view returns(address);
 
+    function checkStrategy(address tokenIn, address tokenOut, uint tokenID) external view returns(bool);
+
     // EXTERNAL FUNCTIONS //
 
     function calculatePositionValue(address tokenIn, address tokenOut, uint amountIn) external returns (uint amountOut);
@@ -109,7 +111,7 @@ interface IModularSwapRouter {
      * @param erc721Params Array of ERC721PositionInfo structs containing ERC721 position details.
      * @return amountOut The total amount of tokens received from liquidation.
      */
-    function liquidate(ERC20PositionInfo[] memory erc20Params, ERC721PositionInfo[] memory erc721Params) external returns(uint amountOut);
+    function liquidate(uint marginAccountID, ERC20PositionInfo[] memory erc20Params, ERC721PositionInfo[] memory erc721Params) external returns(uint amountOut);
 
     /**
      * @notice Swaps ERC20 tokens for ERC20 tokens.
@@ -140,4 +142,11 @@ interface IModularSwapRouter {
      * @return amountOut The amount of ERC20 token received after exercising the ERC721 token.
      */
     function exercise(address tokenIn, address tokenOut, uint id) external returns(uint amountOut);
+
+    event LiquidateERC20(
+        uint indexed marginAccountID,
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint amountOut
+    );
 }

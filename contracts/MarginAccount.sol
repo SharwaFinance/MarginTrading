@@ -1,5 +1,24 @@
 pragma solidity 0.8.20;
 
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 import {IModularSwapRouter} from "./interfaces/modularSwapRouter/IModularSwapRouter.sol";
 import {IMarginAccount} from "./interfaces/IMarginAccount.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -149,7 +168,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         isAvailableErc721[token] = value;
 
         emit UpdateIsAvailableErc721(token, value);
-    }   
+    }    
 
     function setErc721Limit(uint newErc721Limit) external onlyRole(MANAGER_ROLE) {
         erc721Limit = newErc721Limit;
@@ -179,7 +198,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
         IERC20(token).transferFrom(txSender, address(this), amount);
     }
 
-    function provideERC721(uint marginAccountID, address txSender, address token, uint collateralTokenID) external onlyRole(MARGIN_TRADING_ROLE) {
+    function provideERC721(uint marginAccountID, address txSender, address baseToken, address token, uint collateralTokenID) external onlyRole(MARGIN_TRADING_ROLE) {
         require(isAvailableErc721[token], "Token you are attempting to deposit is not available for deposit");
         require(erc721ByContract[marginAccountID][token].length <= erc721Limit, "erc721limit is exceeded");
         erc721ByContract[marginAccountID][token].push(collateralTokenID);
@@ -236,7 +255,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
             delete erc721ByContract[marginAccountID][availableErc721[i]];
         }
 
-        uint amountOutInUSDC = modularSwapRouter.liquidate(erc20Params,erc721Params);
+        uint amountOutInUSDC = modularSwapRouter.liquidate(marginAccountID, erc20Params,erc721Params);
 
         erc20ByContract[marginAccountID][baseToken] += amountOutInUSDC;
 
@@ -259,6 +278,8 @@ contract MarginAccount is IMarginAccount, AccessControl {
         _deleteERC721TokenFromContractList(marginAccountID, erc721Token, id);
         erc20ByContract[marginAccountID][baseToken] += amountOut;
         IERC721(erc721Token).transferFrom(address(this), sender, id);
+
+        emit Exercise(marginAccountID, id, erc721Token, baseToken, amountOut);
     }
 
     // PRIVATE FUNCTIONS //
@@ -301,7 +322,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
                     erc20ByContract[marginAccountID][baseToken] -= userUSDCbalance;
                     IERC20(availableTokenToLiquidityPool[i]).transferFrom(insurancePool, address(this), poolDebt-amountOut); 
                 } else {
-                    uint amountIn = modularSwapRouter.swapOutput(baseToken, availableTokenToLiquidityPool[i], poolDebt);
+                    uint amountIn = modularSwapRouter.swapOutput(availableTokenToLiquidityPool[i], baseToken, poolDebt);
                     erc20ByContract[marginAccountID][baseToken] -= amountIn;
                 }
                 ILiquidityPool(liquidityPoolAddress).repay(marginAccountID, poolDebt);

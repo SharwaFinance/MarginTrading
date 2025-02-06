@@ -1,5 +1,23 @@
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
+
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -174,19 +192,20 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
            borrowingBlockNumber[marginAccountID] + blockNumberDelay <= block.number,
             "The block number has not reached a value that allows to repay loan!"
         );
-        uint newTotalBorrows = totalBorrows();
-        uint newTotalInterestSnapshot = newTotalBorrows - netDebt;
-        uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only
-        uint debt = portfolioIdToDebt[marginAccountID] + accruedInterest;
-        if (debt < amount) {
+        uint newTotalBorrows = totalBorrows(); 
+        uint newTotalInterestSnapshot = newTotalBorrows - netDebt; 
+        uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only  
+        uint debt = portfolioIdToDebt[marginAccountID] + accruedInterest; 
+        uint shareChange = debtSharesSum.mulDiv(amount, newTotalBorrows, Math.Rounding.Up); // Trader's share to be given away //8309  16835083634188
+        if (debt <= amount) {
             // If you try to return more tokens than were borrowed, the required amount will be taken to repay the debt, the rest will remain untouched
             amount = debt;
+            shareChange = shareOfDebt[marginAccountID];
         }
-        uint shareChange = shareOfDebt[marginAccountID].mulDiv(amount, debt, Math.Rounding.Up); // Trader's share to be given away
-        uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID];
-        uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT;
-        totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum;
-        debtSharesSum -= shareChange;
+        uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID]; 
+        uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT; 
+        totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum; 
+        debtSharesSum -= shareChange; 
         shareOfDebt[marginAccountID] -= shareChange;
         if (debt > amount) {
             uint tempDebt = Math.mulDiv(portfolioIdToDebt[marginAccountID], debt - amount, debt, Math.Rounding.Up);
@@ -201,7 +220,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             poolToken.transfer(insurancePool, profitInsurancePool);
         }
 
-        emit Repay(marginAccountID, amount, profit-profitInsurancePool);
+        emit Repay(marginAccountID, amount, profit);
     }
 
     // VIEW FUNCTIONS //
@@ -222,14 +241,12 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         );
         uint newTotalBorrow = ((netDebt + totalInterestSnapshot) *
                 intoUint256(pow(temp, div(convert(checkTime - totalBorrowsSnapshotTimestamp), convert(ONE_YEAR_SECONDS))))) / 1e18;
-        uint newTotalInterestSnapshot = newTotalBorrow - netDebt;
-        return portfolioIdToDebt[marginAccountID] + (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum;
+        return (newTotalBorrow * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
 
     function getDebtWithAccruedInterest(uint marginAccountID) external view returns (uint debtByPool) {
         if (debtSharesSum == 0) return 0;
-        uint newTotalInterestSnapshot = totalBorrows() - netDebt;
-        return portfolioIdToDebt[marginAccountID] + (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum;
+        return (totalBorrows() * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
 
     // PUBLIC FUNCTIONS //

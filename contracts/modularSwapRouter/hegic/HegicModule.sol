@@ -1,5 +1,24 @@
 pragma solidity 0.8.20;
 
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 import {IPositionManagerERC721} from "../../interfaces/modularSwapRouter/IPositionManagerERC721.sol";
 import {IPositionManagerERC20} from "../../interfaces/modularSwapRouter/IPositionManagerERC20.sol"; 
 import {IHegicStrategy} from "../../interfaces/modularSwapRouter/hegic/IHegicStrategy.sol";
@@ -7,7 +26,6 @@ import {IOperationalTreasury} from "../../interfaces/modularSwapRouter/hegic/IOp
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 
 /**
  * @title HegicModule
@@ -42,14 +60,16 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
 
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTIONS //
 
-    function liquidate(uint[] memory value, address holder) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
+    function liquidate(uint marginAccountID, uint[] memory value, address holder) external onlyRole(MODULAR_SWAP_ROUTER_ROLE) returns(uint amountOut) {
         for (uint i; i < value.length; i++) {
             uint profit = getPayOffAmount(value[i]);
             if (profit > 0 && isOptionActive(value[i]) && getExpirationTime(value[i]) > block.timestamp) {
                 operationalTreasury.payOff(value[i], marginAccount);
-                amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, 0);
+                uint amountOutMinimum = assetExchangerUSDCetoUSDC.getInputPositionValue(profit);
+                amountOut += assetExchangerUSDCetoUSDC.swapInput(profit, amountOutMinimum);
             } 
             hegicPositionManager.transferFrom(marginAccount, holder, value[i]);
+            emit LiquidateERC721(marginAccountID, address(hegicPositionManager), assetExchangerUSDCetoUSDC.tokenOutContract(), value[i], amountOut);
         }
     }
 
@@ -98,6 +118,11 @@ contract HegicModule is IPositionManagerERC721, AccessControl {
     function isOptionActive(uint id) public view returns(bool) {
         (IOperationalTreasury.LockedLiquidityState state, , , , ) = operationalTreasury.lockedLiquidity(id);
         return state == IOperationalTreasury.LockedLiquidityState.Locked;
+    }
+
+    function getStrategy(uint id) public view returns(address) {
+        (, IHegicStrategy strategy, , , ) = operationalTreasury.lockedLiquidity(id);
+        return address(strategy);
     }
 
     // PRIVATE FUNCTIONS //

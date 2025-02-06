@@ -1,5 +1,24 @@
 pragma solidity 0.8.20;
 
+/**
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SharwaFinance
+ * Copyright (C) 2025 SharwaFinance
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ **/
+
 import {IPositionManagerERC20} from "../../interfaces/modularSwapRouter/IPositionManagerERC20.sol"; 
 import {IQuoter} from "../../interfaces/modularSwapRouter/uniswap/IQuoter.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -61,7 +80,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     function getPositionValue(uint256 amountIn) external virtual returns (uint amountOut) {}
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
-        require(amountIn > 0, "invalid amountIn");
+        require(amountIn > 0, "ERROR");
         ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
 
         amountOut = quoter.quoteExactInput(params.path, amountIn);
@@ -81,6 +100,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
      */
     function allApprove() external {
         ERC20(tokenInContract).approve(address(swapRouter), type(uint256).max);
+        ERC20(tokenOutContract).approve(address(swapRouter), type(uint256).max);
     }
 
     // ONLY MODULAR_SWAP_ROUTER_ROLE FUNCTION //
@@ -146,7 +166,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: amount,
-            amountInMaximum: 0
+            amountInMaximum: type(uint256).max 
         });
     }
 }
