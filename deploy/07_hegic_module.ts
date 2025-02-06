@@ -17,6 +17,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
 
 
   const MODULAR_SWAP_ROUTER_ROLE = keccak256(toUtf8Bytes("MODULAR_SWAP_ROUTER_ROLE"));
+  const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
 
   const assetExchangerUSDCetoUSDC = await deploy("USDCe_USDC_UniswapModule", {
     contract: "UniswapModuleWithoutChainlink",
@@ -28,7 +29,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       USDC.address,
       SwapRouter.address,
       Quoter.address,
-      solidityPacked(["address", "uint24", "address"], [USDCe.address, 3000, USDC.address])
+      solidityPacked(["address", "uint24", "address"], [USDCe.address, 500, USDC.address])
     ],
   })
 
@@ -53,12 +54,28 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   )
 
   await execute(
+    "USDCe_USDC_UniswapModule",
+    {log: true, from: deployer},
+    "grantRole",
+    MANAGER_ROLE,
+    deployer
+  )
+
+  await execute(
     "ModularSwapRouter",
     {log: true, from: deployer},
     "setTokenInToTokenOutToExchange",
     HegicPositionsManager.address,
     USDC.address,
     HegicModule.address
+  )
+
+  await execute(
+    "ModularSwapRouter",
+    {log: true, from: deployer},
+    "setAvailebleStrategy",
+    ZeroAddress,
+    true
   )
 
   await execute(
@@ -92,6 +109,8 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     HegicModule.address,
     true
   )
+
+  
 }
 
 deployment.tags = ["hegic_module"]

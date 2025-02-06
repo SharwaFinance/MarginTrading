@@ -83,8 +83,8 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
             args: [],
         })
 
-        await deploy("MockAggregatorV3_WETH_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("4000", 8)]})
-        await deploy("MockAggregatorV3_WBTC_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("60000", 8)]})
+        await deploy("AggregatorV3_WETH_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("4000", 8)]})
+        await deploy("AggregatorV3_WBTC_USDC", {contract: "MockAggregatorV3", from: deployer, log: true, args: [8, parseUnits("60000", 8)]})
 
         await deploy("SequencerUptimeFeed", {contract: "MockAggregatorV3", from: deployer, log: true, args: [0, 0]})
 
@@ -92,7 +92,62 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
         save("USDCe", {
             address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
             abi: await getArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").then((x) => x.abi),
-        })   
+        })
+
+        save("USDC", {
+            address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            abi: await getArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").then((x) => x.abi),
+        })
+
+        save("WETH", {
+            address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            abi: await getArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").then((x) => x.abi),
+        })
+
+        save("WBTC", {
+            address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+            abi: await getArtifact("@openzeppelin/contracts/token/ERC20/ERC20.sol:ERC20").then((x) => x.abi),
+        })
+
+        save("Quoter", {
+            address: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+            abi: await getArtifact("contracts/interfaces/modularSwapRouter/uniswap/IQuoter.sol:IQuoter").then((x) => x.abi),
+        }) 
+
+        save("SwapRouter", {
+            address: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+            abi: await getArtifact("@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol:ISwapRouter").then((x) => x.abi),
+        })
+
+        save("OperationalTreasury", {
+            address: "0xec096ea6eB9aa5ea689b0CF00882366E92377371",
+            abi: await getArtifact("contracts/interfaces/modularSwapRouter/hegic/IOperationalTreasury.sol:IOperationalTreasury").then((x) => x.abi),
+          })
+      
+        save("HegicPositionsManager", {
+            address: "0x5Fe380D68fEe022d8acd42dc4D36FbfB249a76d5",
+            abi: await getArtifact("contracts/interfaces/modularSwapRouter/hegic/IPositionsManager.sol:IPositionsManager").then((x) => x.abi),
+        })
+
+        save("AggregatorV3_WETH_USDC", {
+            address: "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+            abi: await getArtifact("@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol:AggregatorV3Interface").then((x) => x.abi),
+        })
+
+        save("AggregatorV3_WBTC_USDC", {
+            address: "0x6ce185860a4963106506C203335A2910413708e9",
+            abi: await getArtifact("@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol:AggregatorV3Interface").then((x) => x.abi),
+        })
+
+        save("SequencerUptimeFeed", {
+            address: "0xFdB631F5EE196F0ed6FAa767959853A9F217697D",
+            abi: await getArtifact("@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV2V3Interface.sol:AggregatorV2V3Interface").then((x) => x.abi),
+        })
+
+        save("IProxySeller", {
+            address: "0x7740FC99bcaE3763a5641e450357a94936eaF380",
+            abi: await getArtifact("contracts/interfaces/oneClick/IProxySeller.sol:IProxySeller").then((x) => x.abi),
+          })
     }
 }
 

@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import {keccak256, toUtf8Bytes} from "ethers"
 
 async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
-  const {deployments, getNamedAccounts} = hre
+  const {deployments, getNamedAccounts, network} = hre
   const { deploy, get, execute } = deployments
   const {deployer} = await getNamedAccounts()
   const signers = await ethers.getSigners()
@@ -14,8 +14,12 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const HegicPositionsManager = await get("HegicPositionsManager")
   const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
 
-  // NEED UPDATE WALLET
-  const insurancePool = await signers[5].getAddress()
+  let insurancePool: string
+  if (network.name == "hardhat") {
+    insurancePool = await signers[5].getAddress()
+  } else {
+    insurancePool = "0xEE1c5a8c397F4D6BBC33BAd080e77D531C6d8Ce5"
+  }
 
   await deploy("MarginAccount", {
     from: deployer,

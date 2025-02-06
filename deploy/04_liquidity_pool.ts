@@ -7,7 +7,13 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   const { deploy, get, execute } = deployments
   const {deployer} = await getNamedAccounts()
   const signers = await ethers.getSigners()
-  const insurancePool = await signers[5].getAddress()
+
+  let insurancePool: string
+  if (network.name == "hardhat") {
+    insurancePool = await signers[5].getAddress()
+  } else {
+    insurancePool = "0xEE1c5a8c397F4D6BBC33BAd080e77D531C6d8Ce5"
+  }
 
   const WETH = await get("WETH")
   const WBTC = await get("WBTC")
@@ -26,7 +32,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       WETH.address,
       'SF-LP-WETH',
       'SF-LP-WETH',
-      parseUnits("5000", 18)
+      parseUnits("37", 18)
     ],
   })
 
@@ -36,6 +42,13 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     "grantRole",
     MANAGER_ROLE,
     deployer
+  )
+
+  await execute(
+    "WETH_LiquidityPool",
+    {log: true, from: deployer},
+    "setInterestRate",
+    0.047*1e4
   )
 
   const WBTC_LiquidityPool = await deploy("WBTC_LiquidityPool", {
@@ -49,7 +62,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       WBTC.address,
       'SF-LP-WBTC',
       'SF-LP-WBTC',
-      parseUnits("1000", 8)
+      parseUnits("1", 8)
     ],
   })
 
@@ -59,6 +72,13 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     "grantRole",
     MANAGER_ROLE,
     deployer
+  )
+
+  await execute(
+    "WBTC_LiquidityPool",
+    {log: true, from: deployer},
+    "setInterestRate",
+    0.005*1e4
   )
 
   const USDC_LiquidityPool = await deploy("USDC_LiquidityPool", {
@@ -72,7 +92,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       USDC.address,
       'SF-LP-USDC',
       'SF-LP-USDC',
-      parseUnits("500000", 6)
+      parseUnits("100000", 6)
     ],
   })
 
@@ -82,6 +102,13 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     "grantRole",
     MANAGER_ROLE,
     deployer
+  )
+
+  await execute(
+    "USDC_LiquidityPool",
+    {log: true, from: deployer},
+    "setInterestRate",
+    0.11*1e4
   )
 
   await execute(
