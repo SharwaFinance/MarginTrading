@@ -26,10 +26,10 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
     args: [
       MarginAccount.address,
       USDCe.address,
+      500,
       USDC.address,
       SwapRouter.address,
-      Quoter.address,
-      solidityPacked(["address", "uint24", "address"], [USDCe.address, 500, USDC.address])
+      Quoter.address
     ],
   })
 

@@ -26,7 +26,7 @@ contract SwapRouterMock {
     function exactOutput(ISwapRouter.ExactOutputParams calldata params) external payable returns (uint256 amountIn) {
         (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
         amountIn = quoterMock.quoteExactOutput(params.path, params.amountOut);
-        ERC20(tokenIn).transferFrom(params.recipient, address(this), amountIn);
-        ERC20(tokenOut).transfer(params.recipient, params.amountOut);
+        ERC20(tokenOut).transferFrom(params.recipient, address(this), amountIn);
+        ERC20(tokenIn).transfer(params.recipient, params.amountOut);
     }
 }

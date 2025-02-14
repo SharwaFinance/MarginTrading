@@ -166,17 +166,18 @@ contract ModularSwapRouter is IModularSwapRouter, AccessControl {
         address marginTradingBaseToken = marginTrading.BASE_TOKEN();
         for (uint i; i < erc20Params.length; i++) {
             address moduleAddress = tokenInToTokenOutToExchange[erc20Params[i].tokenIn][erc20Params[i].tokenOut];
+            uint liquidateAmount;
             if (
                 erc20Params[i].tokenIn == marginTradingBaseToken &&
                 erc20Params[i].tokenOut == marginTradingBaseToken
             ) {
-                uint liquiateAmount = erc20Params[i].value; 
-                amountOut += liquiateAmount;
+                liquidateAmount = erc20Params[i].value; 
+                amountOut += liquidateAmount;
             } else if (moduleAddress != address(0) && erc20Params[i].value != 0) {
-                uint liquiateAmount = IPositionManagerERC20(moduleAddress).liquidate(erc20Params[i].value); 
-                amountOut += liquiateAmount;
+                liquidateAmount = IPositionManagerERC20(moduleAddress).liquidate(erc20Params[i].value); 
+                amountOut += liquidateAmount;
             }
-            emit LiquidateERC20(marginAccountID, erc20Params[i].tokenIn, erc20Params[i].tokenOut, amountOut);
+            emit LiquidateERC20(marginAccountID, erc20Params[i].tokenIn, erc20Params[i].tokenOut, erc20Params[i].value, liquidateAmount);
         }
 
         for (uint i; i < erc721Params.length; i++) {

@@ -33,8 +33,8 @@ describe("option_trading_spec.ts", function () {
   let SwapRouterMock: SwapRouterMock
   let ModularSwapRouter: ModularSwapRouter
   let QuoterMock: QuoterMock
-  let MockAggregatorV3_WETH_USDC: MockAggregatorV3
-  let MockAggregatorV3_WBTC_USDC: MockAggregatorV3
+  let AggregatorV3_WETH_USDC: MockAggregatorV3
+  let AggregatorV3_WBTC_USDC: MockAggregatorV3
   let USDC: MockERC20
   let USDC_e: MockERC20
   let WETH: MockERC20
@@ -53,8 +53,8 @@ describe("option_trading_spec.ts", function () {
     margin_account_manager = await ethers.getContract("MarginAccountManager")
     ModularSwapRouter = await ethers.getContract("ModularSwapRouter")
     QuoterMock = await ethers.getContract("Quoter")
-    MockAggregatorV3_WETH_USDC = await ethers.getContract("MockAggregatorV3_WETH_USDC")
-    MockAggregatorV3_WBTC_USDC = await ethers.getContract("MockAggregatorV3_WBTC_USDC")
+    AggregatorV3_WETH_USDC = await ethers.getContract("AggregatorV3_WETH_USDC")
+    AggregatorV3_WBTC_USDC = await ethers.getContract("AggregatorV3_WBTC_USDC")
     USDC = await ethers.getContract("USDC")
     USDC_e = await ethers.getContract("USDCe")
     WETH = await ethers.getContract("WETH")
@@ -98,6 +98,9 @@ describe("option_trading_spec.ts", function () {
     await WBTC.connect(deployer).approve(await wbtc_liquidity_pool.getAddress(), wbtc_amount_to_liquidity_pool)
     await USDC.connect(deployer).approve(await usdc_liquidity_pool.getAddress(), usdc_amount_to_liquidity_pool)
 
+    await weth_liquidity_pool.setMaximumPoolCapacity(weth_amount_to_liquidity_pool*10n)
+    await wbtc_liquidity_pool.setMaximumPoolCapacity(wbtc_amount_to_liquidity_pool*10n)
+    await usdc_liquidity_pool.setMaximumPoolCapacity(usdc_amount_to_liquidity_pool*10n)
     await weth_liquidity_pool.provide(weth_amount_to_liquidity_pool)
     await wbtc_liquidity_pool.provide(wbtc_amount_to_liquidity_pool)
     await usdc_liquidity_pool.provide(usdc_amount_to_liquidity_pool)
@@ -210,7 +213,7 @@ describe("option_trading_spec.ts", function () {
 
     const weth_price_0 = parseUnits("4000", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_0)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
     await margin_trading.connect(User_1).borrow(margin_account_id_0, await USDC.getAddress(), usdc_borrow_amount )
     await margin_trading.connect(User_1).swap(margin_account_id_0, await USDC.getAddress(), await WETH.getAddress(), usdc_borrow_amount + collateral, amountOutMinimum)
@@ -227,7 +230,7 @@ describe("option_trading_spec.ts", function () {
 
     const weth_price_1 = parseUnits("3500", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
 
     await expect(margin_trading.connect(User_1).withdrawERC721(margin_account_id_0, HegicPositionsManager ,option_id_1)).to.be.revertedWith("portfolioRatio is too low")
 

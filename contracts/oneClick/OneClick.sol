@@ -153,7 +153,7 @@ contract OneClickMarginTrading is AccessControl{
     ) external onlyApprovedOrOwner(marginAccountID) {
         (, uint128 positivepnl) = strategy.calculateNegativepnlAndPositivepnl(amount, period, additional);
         uint premium = uint256(positivepnl); 
-        uint amountOut = IPositionManagerERC20(uniswapExchangeModules[tokenOut][hegicTokenIn]).getOutputPositionValue(premium);
+        uint amountOut = IPositionManagerERC20(uniswapExchangeModules[hegicTokenIn][tokenOut]).getOutputPositionValue(premium);
         marginTrading.withdrawERC20(marginAccountID, tokenOut, amountOut);
         IPositionManagerERC20(uniswapExchangeModules[tokenOut][hegicTokenIn]).swapOutput(premium);
         require(premium <= maxTotalCost, "maximum total value exceeded");
@@ -185,7 +185,7 @@ contract OneClickMarginTrading is AccessControl{
         if (tokenOut == hegicTokenIn) {
             IERC20(tokenOut).transferFrom(msg.sender, address(this), premium);    
         } else {
-            uint amountOut = IPositionManagerERC20(uniswapExchangeModules[tokenOut][hegicTokenIn]).getOutputPositionValue(premium);
+            uint amountOut = IPositionManagerERC20(uniswapExchangeModules[hegicTokenIn][tokenOut]).getOutputPositionValue(premium);
             if (msg.value != 0 && tokenOut == address(weth)) {
                 IWETH9(weth).deposit{value: msg.value}();
                 if (msg.value > amountOut) {
@@ -194,7 +194,7 @@ contract OneClickMarginTrading is AccessControl{
             } else {
                 IERC20(tokenOut).transferFrom(msg.sender, address(this), amountOut);
             }
-            IPositionManagerERC20(uniswapExchangeModules[tokenOut][hegicTokenIn]).swapOutput(premium);
+            IPositionManagerERC20(uniswapExchangeModules[hegicTokenIn][tokenOut]).swapOutput(premium);
         }
         uint id = hegicPositionManager.nextTokenId();
 

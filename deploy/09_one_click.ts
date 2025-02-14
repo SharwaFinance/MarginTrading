@@ -45,21 +45,21 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   ]);
 
   const arrayParams = [
-    {"tokenIn": "WETH", "tokenOut" : "USDCe", "path": solidityPacked(["address", "uint24", "address"], [USDCe.address, 500, WETH.address])},
-    {"tokenIn": "WBTC", "tokenOut" : "USDCe", "path": solidityPacked(["address", "uint24", "address"], [USDCe.address, 500, WBTC.address])},
-    {"tokenIn": "USDC", "tokenOut" : "USDCe", "path": solidityPacked(["address", "uint24", "address"], [USDCe.address, 500, USDC.address])},
+    {"tokenIn": "USDCe", "poolFee": 500, "tokenOut" : "WETH"},
+    {"tokenIn": "USDCe", "poolFee": 500, "tokenOut" : "WBTC"},
+    {"tokenIn": "USDCe", "poolFee": 500, "tokenOut" : "USDC"},
   ]
 
-  async function deployUniswapModule(tokenIn: string, tokenOut: string, path: string) {
+  async function deployUniswapModule(tokenIn: string, poolFee: number, tokenOut: string) {
     const contractName = `${tokenIn}_${tokenOut}_UniswapModuleWithOneClick`
 
     let args = [
       OneClickMarginTrading.address,
       contractsMap.get(tokenIn),
+      poolFee,
       contractsMap.get(tokenOut),
       SwapRouter.address,
-      Quoter.address,
-      path
+      Quoter.address
     ]
 
     const module = await deploy(contractName, {
@@ -107,7 +107,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       "OneClickMarginTrading",
       {log: true, from: deployer},
       "approveERC20",
-      contractsMap.get(tokenIn),
+      contractsMap.get(tokenOut),
       MarginAccount.address,
       MaxUint256
     )
@@ -116,7 +116,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       "OneClickMarginTrading",
       {log: true, from: deployer},
       "approveERC20",
-      contractsMap.get(tokenIn),
+      contractsMap.get(tokenOut),
       module.address,
       MaxUint256
     )
@@ -125,7 +125,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       "OneClickMarginTrading",
       {log: true, from: deployer},
       "approveERC20",
-      contractsMap.get(tokenOut),
+      contractsMap.get(tokenIn),
       IProxySeller.address,
       MaxUint256
     )
@@ -148,7 +148,7 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   }
 
   for (let item in arrayParams) { 
-    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].tokenOut, arrayParams[item].path)
+    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].poolFee, arrayParams[item].tokenOut)
   }
 
 

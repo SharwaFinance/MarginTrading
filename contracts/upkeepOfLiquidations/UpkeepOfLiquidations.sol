@@ -22,6 +22,8 @@ pragma solidity 0.8.20;
 import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IMarginTrading} from "../interfaces/IMarginTrading.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 
 contract UpkeepOfLiquidations is 
     AutomationCompatibleInterface, 
@@ -36,6 +38,10 @@ contract UpkeepOfLiquidations is
     }
 
     // OWNER FUNCTIONS //
+
+    function transferErc20(address token, address to, uint amount) external onlyOwner {
+        ERC20(token).transfer(to, amount);
+    }
 
     function setPortfolioLendingContract(IMarginTrading newPortfolioLendingContract) external onlyOwner {
         marginTrading = newPortfolioLendingContract;

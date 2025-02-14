@@ -25,17 +25,17 @@ contract UniswapModuleWithOneClick is UniswapModuleBase {
     constructor(
         address _marginAccount,
         address _tokenInContract,
+        uint24 _poolFee,
         address _tokenOutContract,
         ISwapRouter _swapRouter,
-        IQuoter _quoter,
-        bytes memory _uniswapPath
+        IQuoter _quoter
     ) UniswapModuleBase(
         _marginAccount,
         _tokenInContract,
+        _poolFee,
         _tokenOutContract,
         _swapRouter,
-        _quoter,
-        _uniswapPath
+        _quoter    
     ) {}
 
     // ONLY MANAGER_ROLE FUNTIONS //

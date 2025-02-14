@@ -326,8 +326,20 @@ interface IMarginAccount {
         uint amountIn
     );
 
+    event LiquidateERC20(
+        uint indexed marginAccountID,
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint amountIn,
+        uint amountOut
+    );
+
     event Unlock(
         uint timelock
+    );
+
+    event LiquidatorCommission(
+        uint amount
     );
 
     event Lock();

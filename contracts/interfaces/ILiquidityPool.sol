@@ -186,6 +186,7 @@ interface ILiquidityPool is IERC20{
     event Repay(
         uint indexed marginAccountID,
         uint amountRepayDebtTokens,
-        uint accruedInterest
+        uint accruedInterest,
+        uint profitInsurancePool
     );
 }

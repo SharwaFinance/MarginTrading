@@ -93,6 +93,9 @@ describe("uniswap_trading.ts", function () {
     await WBTC.connect(deployer).approve(await wbtc_liquidity_pool.getAddress(), wbtc_amount_to_liquidity_pool)
     await USDC.connect(deployer).approve(await usdc_liquidity_pool.getAddress(), usdc_amount_to_liquidity_pool)
 
+    await weth_liquidity_pool.setMaximumPoolCapacity(weth_amount_to_liquidity_pool*10n)
+    await wbtc_liquidity_pool.setMaximumPoolCapacity(wbtc_amount_to_liquidity_pool*10n)
+    await usdc_liquidity_pool.setMaximumPoolCapacity(usdc_amount_to_liquidity_pool*10n)
     await weth_liquidity_pool.provide(weth_amount_to_liquidity_pool)
     await wbtc_liquidity_pool.provide(wbtc_amount_to_liquidity_pool)
     await usdc_liquidity_pool.provide(usdc_amount_to_liquidity_pool)

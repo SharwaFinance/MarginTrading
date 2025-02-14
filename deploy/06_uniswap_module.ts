@@ -27,26 +27,25 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
   ]);
 
   const arrayParams = [
-    {"tokenIn": "WETH", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 500, USDC.address]), "aggregatorV3": AggregatorV3_WETH_USDC.address},
-    {"tokenIn": "WETH", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [WETH.address, 500, WBTC.address]), "aggregatorV3": ZeroAddress},
-    {"tokenIn": "WBTC", "tokenOut" : "USDC", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 500, USDC.address]), "aggregatorV3": AggregatorV3_WBTC_USDC.address},
-    {"tokenIn": "WBTC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [WBTC.address, 500, WETH.address]), "aggregatorV3": ZeroAddress},
-    {"tokenIn": "USDC", "tokenOut" : "WETH", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 500, WETH.address]), "aggregatorV3": ZeroAddress},
-    {"tokenIn": "USDC", "tokenOut" : "WBTC", "path": solidityPacked(["address", "uint24", "address"], [USDC.address, 500, WBTC.address]), "aggregatorV3": ZeroAddress},
+    {"tokenIn": "WETH", "poolFee": 500, "tokenOut" : "USDC", "aggregatorV3": AggregatorV3_WETH_USDC.address},
+    {"tokenIn": "WETH", "poolFee": 500, "tokenOut" : "WBTC", "aggregatorV3": ZeroAddress},
+    {"tokenIn": "WBTC", "poolFee": 500, "tokenOut" : "USDC", "aggregatorV3": AggregatorV3_WBTC_USDC.address},
+    {"tokenIn": "WBTC", "poolFee": 500, "tokenOut" : "WETH", "aggregatorV3": ZeroAddress},
+    {"tokenIn": "USDC", "poolFee": 500, "tokenOut" : "WETH", "aggregatorV3": ZeroAddress},
+    {"tokenIn": "USDC", "poolFee": 500, "tokenOut" : "WBTC", "aggregatorV3": ZeroAddress},
   ]
 
-  async function deployUniswapModule(tokenIn: string, tokenOut: string, path: string, aggregatorV3: string) {
-    // console.log(`path ${tokenIn}_${tokenOut}`, path)
+  async function deployUniswapModule(tokenIn: string, poolFee: number, tokenOut: string, aggregatorV3: string) {
     const contractName = `${tokenIn}_${tokenOut}_UniswapModule`
 
     let contract = "UniswapModuleWithoutChainlink"
     let args = [
       MarginAccount.address,
       contractsMap.get(tokenIn),
+      poolFee,
       contractsMap.get(tokenOut),
       SwapRouter.address,
-      Quoter.address,
-      path
+      Quoter.address
     ]
 
     if (aggregatorV3 != ZeroAddress) {
@@ -54,12 +53,12 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       args = [
         MarginAccount.address,
         contractsMap.get(tokenIn),
+        poolFee,
         contractsMap.get(tokenOut),
         aggregatorV3,
         SequencerUptimeFeed.address,
         SwapRouter.address,
-        Quoter.address,
-        path
+        Quoter.address
       ]
     }
 
@@ -110,10 +109,19 @@ async function deployment(hre: HardhatRuntimeEnvironment): Promise<void> {
       MaxUint256
     )
 
+    await execute(
+      "MarginAccount",
+      {log: true, from: deployer},
+      "approveERC20",
+      contractsMap.get(tokenOut), 
+      module.address,
+      MaxUint256
+    )
+
   }
 
   for (let item in arrayParams) { 
-    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].tokenOut, arrayParams[item].path, arrayParams[item].aggregatorV3)
+    await deployUniswapModule(arrayParams[item].tokenIn, arrayParams[item].poolFee, arrayParams[item].tokenOut, arrayParams[item].aggregatorV3)
   }
 
 }

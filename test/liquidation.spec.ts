@@ -33,8 +33,8 @@ describe("liquidation.spec.ts", function () {
   let SwapRouterMock: SwapRouterMock
   let ModularSwapRouter: ModularSwapRouter
   let QuoterMock: QuoterMock
-  let MockAggregatorV3_WETH_USDC: MockAggregatorV3
-  let MockAggregatorV3_WBTC_USDC: MockAggregatorV3
+  let AggregatorV3_WETH_USDC: MockAggregatorV3
+  let AggregatorV3_WBTC_USDC: MockAggregatorV3
   let USDC: MockERC20
   let USDC_e: MockERC20
   let WETH: MockERC20
@@ -53,8 +53,8 @@ describe("liquidation.spec.ts", function () {
     margin_account_manager = await ethers.getContract("MarginAccountManager")
     ModularSwapRouter = await ethers.getContract("ModularSwapRouter")
     QuoterMock = await ethers.getContract("Quoter")
-    MockAggregatorV3_WETH_USDC = await ethers.getContract("MockAggregatorV3_WETH_USDC")
-    MockAggregatorV3_WBTC_USDC = await ethers.getContract("MockAggregatorV3_WBTC_USDC")
+    AggregatorV3_WETH_USDC = await ethers.getContract("AggregatorV3_WETH_USDC")
+    AggregatorV3_WBTC_USDC = await ethers.getContract("AggregatorV3_WBTC_USDC")
     USDC = await ethers.getContract("USDC")
     USDC_e = await ethers.getContract("USDCe")
     WETH = await ethers.getContract("WETH")
@@ -100,6 +100,9 @@ describe("liquidation.spec.ts", function () {
     await WBTC.connect(deployer).approve(await wbtc_liquidity_pool.getAddress(), wbtc_amount_to_liquidity_pool)
     await USDC.connect(deployer).approve(await usdc_liquidity_pool.getAddress(), usdc_amount_to_liquidity_pool)
 
+    await weth_liquidity_pool.setMaximumPoolCapacity(weth_amount_to_liquidity_pool*10n)
+    await wbtc_liquidity_pool.setMaximumPoolCapacity(wbtc_amount_to_liquidity_pool*10n)
+    await usdc_liquidity_pool.setMaximumPoolCapacity(usdc_amount_to_liquidity_pool*10n)
     await weth_liquidity_pool.provide(weth_amount_to_liquidity_pool)
     await wbtc_liquidity_pool.provide(wbtc_amount_to_liquidity_pool)
     await usdc_liquidity_pool.provide(usdc_amount_to_liquidity_pool)
@@ -148,7 +151,7 @@ describe("liquidation.spec.ts", function () {
 
     const weth_price_1 = parseUnits("4000", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
     const usdc_borrow_amount = parseUnits("5000", await USDC.decimals()) 
     await margin_trading.connect(User_1).borrow(margin_account_id_0, USDC, usdc_borrow_amount)
@@ -194,7 +197,7 @@ describe("liquidation.spec.ts", function () {
 
     const weth_price_3 = parseUnits("3750", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_3)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3750", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("3750", 8))
 
     const account_value_3 = await margin_trading.calculateMarginAccountValue.staticCall(margin_account_id_0)
     const usdcDebt_3 = await usdc_liquidity_pool.getDebtWithAccruedInterest(margin_account_id_0)
@@ -211,8 +214,8 @@ describe("liquidation.spec.ts", function () {
 
     expect(await margin_trading.getMarginAccountRatio.staticCall(margin_account_id_0)).to.be.eq(expectedMarginRatio_3)
 
-    const expected_amount_to_liquidity_pool = parseUnits("5000.000029",6)
-    const expected_amount_to_insurance_pool = 1
+    const expected_amount_to_liquidity_pool = parseUnits("5000.000053",6)
+    const expected_amount_to_insurance_pool = 13
 
     await expect(
       margin_trading.connect(User_4).liquidate(margin_account_id_0)
@@ -252,7 +255,7 @@ describe("liquidation.spec.ts", function () {
 
     const weth_price_1 = parseUnits("4000", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
     const collateral = parseUnits("60000", 6)
     await USDC.connect(User_1).mint(collateral)
@@ -273,11 +276,11 @@ describe("liquidation.spec.ts", function () {
 
     const weth_price_2 = parseUnits("2700", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_2)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("2700", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("2700", 8))
 
     const wbtc_price_1 = parseUnits("60000", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WBTC.getAddress(), await USDC.getAddress(), wbtc_price_1)
-    await MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("60000", 8))
+    await AggregatorV3_WBTC_USDC.setAnswer(parseUnits("60000", 8))
 
     const accountValue = await margin_trading.calculateMarginAccountValue.staticCall(margin_account_id_0)
 
@@ -313,7 +316,7 @@ describe("liquidation.spec.ts", function () {
     const expected_account_debt = parseUnits("0", 6)
 
     const account_value = await margin_trading.calculateMarginAccountValue.staticCall(margin_account_id_0)
-    const expected_account_value = parseUnits("1733.746155", 6)
+    const expected_account_value = parseUnits("7690.246245", 6)
 
     await expect (await USDC.balanceOf(usdc_liquidity_pool)).to.be.eq(expected_amount_to_usdc_liquidity_pool)
     await expect (await WETH.balanceOf(weth_liquidity_pool)).to.be.eq(expected_amount_to_weth_liquidity_pool)
@@ -508,7 +511,7 @@ describe("liquidation.spec.ts", function () {
 
     const weth_price_1 = parseUnits("3700", await USDC.decimals())
     await QuoterMock.setSwapPrice(await WETH.getAddress(), await USDC.getAddress(), weth_price_1)
-    await MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3700", 8))
+    await AggregatorV3_WETH_USDC.setAnswer(parseUnits("3700", 8))
 
     await margin_trading.connect(User_1).liquidate(margin_account_id_0)
     

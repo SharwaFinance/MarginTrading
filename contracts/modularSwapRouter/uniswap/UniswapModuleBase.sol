@@ -25,7 +25,6 @@ import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRoute
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-
 /**
  * @title UniswapModule
  * @dev A module for managing token swaps and liquidity positions using Uniswap.
@@ -39,9 +38,8 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
 
     address public marginAccount;
 
-    bytes public uniswapPath;
-
     address public tokenInContract;
+    uint24 public poolFee;
     address public tokenOutContract;
 
     ISwapRouter public swapRouter;
@@ -50,46 +48,31 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
     constructor(
         address _marginAccount,
         address _tokenInContract,
+        uint24 _poolFee,
         address _tokenOutContract,
         ISwapRouter _swapRouter,
-        IQuoter _quoter,
-        bytes memory _uniswapPath
+        IQuoter _quoter
     ) {
         marginAccount = _marginAccount;
         tokenInContract = _tokenInContract;
+        poolFee = _poolFee;
         tokenOutContract = _tokenOutContract;
         swapRouter = _swapRouter;
         quoter = _quoter;
-        uniswapPath = _uniswapPath;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    // ONLY MANAGER_ROLE FUNTIONS //
-
-    /**
-     * @notice Updates the Uniswap path used for swaps.
-     * @dev This function can only be called by an account with the MANAGER_ROLE.
-     * @param newPath The new path to set for Uniswap swaps.
-     */
-    function setUniswapPath(bytes memory newPath) external onlyRole(MANAGER_ROLE) {
-        uniswapPath = newPath;
-    }
 
     // VIEW FUNCTIONS //
 
     function getPositionValue(uint256 amountIn) external virtual returns (uint amountOut) {}
 
     function getInputPositionValue(uint256 amountIn) external returns (uint amountOut) {
-        require(amountIn > 0, "ERROR");
-        ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
-
-        amountOut = quoter.quoteExactInput(params.path, amountIn);
+        amountOut = quoter.quoteExactInput(abi.encodePacked(tokenInContract, poolFee, tokenOutContract), amountIn);
     }
 
     function getOutputPositionValue(uint256 amountOut) public returns (uint amountIn) {
-        ISwapRouter.ExactOutputParams memory params = _prepareOutputParams(amountOut);
-
-        amountIn = quoter.quoteExactOutput(params.path, amountOut);
+        amountIn = quoter.quoteExactOutput(abi.encodePacked(tokenInContract, poolFee, tokenOutContract), amountOut);
     }
 
     // EXTERNAL FUNCTION //
@@ -120,7 +103,6 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
 
         ISwapRouter.ExactInputParams memory params = _prepareInputParams(amountIn);
         params.amountOutMinimum = amountOutMinimum;
-
         amountOut = swapRouter.exactInput(params);
 
         ERC20(tokenOutContract).transfer(marginAccount, amountOut);
@@ -130,12 +112,13 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
         ISwapRouter.ExactOutputParams memory params = _prepareOutputParams(amountOut);
 
         amountIn = getOutputPositionValue(amountOut);
+
         params.amountInMaximum = amountIn;
-        ERC20(tokenInContract).transferFrom(marginAccount, address(this), amountIn);
+        ERC20(tokenOutContract).transferFrom(marginAccount, address(this), amountIn);
 
         swapRouter.exactOutput(params);
 
-        ERC20(tokenOutContract).transfer(marginAccount, amountOut);
+        ERC20(tokenInContract).transfer(marginAccount, amountOut);
     }
 
     // PRIVATE FUNCTION //
@@ -147,7 +130,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
      */
     function _prepareInputParams(uint256 amount) private view returns(ISwapRouter.ExactInputParams memory params) {
         params = ISwapRouter.ExactInputParams({
-            path: uniswapPath,
+            path: abi.encodePacked(tokenInContract, poolFee, tokenOutContract),
             recipient: address(this),
             deadline: block.timestamp,
             amountIn: amount,
@@ -162,7 +145,7 @@ abstract contract UniswapModuleBase is IPositionManagerERC20, AccessControl {
      */
     function _prepareOutputParams(uint256 amount) private view returns(ISwapRouter.ExactOutputParams memory params) {
         params = ISwapRouter.ExactOutputParams({
-            path: uniswapPath,
+            path: abi.encodePacked(tokenInContract, poolFee, tokenOutContract),
             recipient: address(this),
             deadline: block.timestamp,
             amountOut: amount,

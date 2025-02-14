@@ -46,19 +46,19 @@ contract UniswapModuleWithChainlink is UniswapModuleBase {
     constructor(
         address _marginAccount,
         address _tokenInContract,
+        uint24 _poolFee,
         address _tokenOutContract,
         address _dataFeed,
         address _sequencerUptimeFeed, 
         ISwapRouter _swapRouter,
-        IQuoter _quoter,
-        bytes memory _uniswapPath
+        IQuoter _quoter    
     ) UniswapModuleBase(
         _marginAccount,
         _tokenInContract,
+        _poolFee,
         _tokenOutContract,
         _swapRouter,
-        _quoter,
-        _uniswapPath
+        _quoter
     ) {
         dataFeed = _dataFeed;
         sequencerUptimeFeed = _sequencerUptimeFeed;

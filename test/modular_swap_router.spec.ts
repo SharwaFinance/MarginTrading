@@ -22,17 +22,4 @@ describe("modular_swap_router.spec.ts", function () {
       expect(await c.ModularSwapRouter.getModuleAddress(newTokenIn, newTokenOut)).to.eq(newModule)
     })
   })
-
-  describe("UniswapModule: AccessControl", async () => {
-
-    it("setUniswapPath", async () => {
-      const newPath = solidityPacked(["address", "uint24", "address"], [await c.WBTC.getAddress(), 3000, await c.WBTC.getAddress()])
-      await c.UniswapModule_WETH_USDC.connect(c.deployer).setUniswapPath(newPath)
-      await expect(
-        c.UniswapModule_WETH_USDC.connect(c.signers[1]).setUniswapPath(newPath)
-      ).to.be.revertedWith("AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08") 
-      expect(await c.UniswapModule_WETH_USDC.uniswapPath()).to.eq(newPath)
-    })
-  })
-  
 })

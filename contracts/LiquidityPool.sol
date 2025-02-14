@@ -61,7 +61,7 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
     address public insurancePool;
 
     uint public interestRate = 0.05*1e4;
-    uint public insuranceRateMultiplier = 0.05*1e4;
+    uint public insuranceRateMultiplier = 0.2*1e4;
     uint public maximumBorrowMultiplier = 0.8*1e4;
 
     constructor(
@@ -187,24 +187,26 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         emit Borrow(marginAccountID, amount);
     }
 
-    function repay(uint marginAccountID, uint amount) external onlyRole(MARGIN_ACCOUNT_ROLE) {
+function repay(uint marginAccountID, uint amount) external onlyRole(MARGIN_ACCOUNT_ROLE) {
         require(
            borrowingBlockNumber[marginAccountID] + blockNumberDelay <= block.number,
             "The block number has not reached a value that allows to repay loan!"
         );
-        uint newTotalBorrows = totalBorrows(); 
-        uint newTotalInterestSnapshot = newTotalBorrows - netDebt; 
-        uint accruedInterest = (newTotalInterestSnapshot * shareOfDebt[marginAccountID]) / debtSharesSum; // Accrued interest only  
-        uint debt = portfolioIdToDebt[marginAccountID] + accruedInterest; 
-        uint shareChange = debtSharesSum.mulDiv(amount, newTotalBorrows, Math.Rounding.Up); // Trader's share to be given away //8309  16835083634188
+        uint newTotalBorrows = totalBorrows();
+        uint debt = getDebtWithAccruedInterest(marginAccountID);
+        uint accruedInterest = debt - portfolioIdToDebt[marginAccountID];
+        uint shareChange = debtSharesSum.mulDiv(amount, newTotalBorrows, Math.Rounding.Up); 
         if (debt <= amount) {
-            // If you try to return more tokens than were borrowed, the required amount will be taken to repay the debt, the rest will remain untouched
             amount = debt;
             shareChange = shareOfDebt[marginAccountID];
         }
-        uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID]; 
+        
+        uint profit = (accruedInterest * shareChange) / shareOfDebt[marginAccountID];
         uint profitInsurancePool = (profit * insuranceRateMultiplier) / INTEREST_RATE_COEFFICIENT; 
-        totalInterestSnapshot -= totalInterestSnapshot * shareChange / debtSharesSum; 
+        if (totalInterestSnapshot > 0){
+            uint nowInterestSnapshot = (newTotalBorrows - netDebt - totalInterestSnapshot) * shareOfDebt[marginAccountID] / debtSharesSum;
+            totalInterestSnapshot = totalInterestSnapshot - ((profit * shareOfDebt[marginAccountID] - nowInterestSnapshot * shareChange) / shareOfDebt[marginAccountID]);
+        } 
         debtSharesSum -= shareChange; 
         shareOfDebt[marginAccountID] -= shareChange;
         if (debt > amount) {
@@ -220,8 +222,9 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
             poolToken.transfer(insurancePool, profitInsurancePool);
         }
 
-        emit Repay(marginAccountID, amount, profit);
+        emit Repay(marginAccountID, amount, profit, profitInsurancePool);
     }
+
 
     // VIEW FUNCTIONS //
 
@@ -244,12 +247,12 @@ contract LiquidityPool is ERC20, ERC20Burnable, AccessControl, ILiquidityPool, R
         return (newTotalBorrow * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
 
-    function getDebtWithAccruedInterest(uint marginAccountID) external view returns (uint debtByPool) {
+    // PUBLIC FUNCTIONS //
+
+    function getDebtWithAccruedInterest(uint marginAccountID) public view returns (uint debtByPool) {
         if (debtSharesSum == 0) return 0;
         return (totalBorrows() * shareOfDebt[marginAccountID]) / debtSharesSum;
     }
-
-    // PUBLIC FUNCTIONS //
 
     function totalBorrows() public view returns (uint) {
         uint ownershipTime = block.timestamp - totalBorrowsSnapshotTimestamp;

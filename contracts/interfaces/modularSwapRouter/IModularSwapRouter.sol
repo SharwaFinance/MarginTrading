@@ -147,6 +147,15 @@ interface IModularSwapRouter {
         uint indexed marginAccountID,
         address indexed tokenIn,
         address indexed tokenOut,
+        uint amountIn,
         uint amountOut
+    );
+
+    event LiquidateERC721(
+        uint indexed marginAccountID,
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint[] tokenId,
+        uint amountIn    
     );
 }

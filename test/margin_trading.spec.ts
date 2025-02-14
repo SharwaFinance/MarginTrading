@@ -305,7 +305,8 @@ describe("margin_trading.spec.ts", function () {
     });
 
     it("repay", async () => {
-      const accruedInterest = await c.USDC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - loanAmount
+      const accruedInterest = await c.USDC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2) - loanAmount
+      await c.USDC_LiquidityPool.setInsuranceRateMultiplier(0)
       await expect(
         c.MarginTrading.connect(c.deployer).repay(marginAccountID, await c.USDC.getAddress(), 0)
       ).to.changeTokenBalances(
@@ -341,7 +342,8 @@ describe("margin_trading.spec.ts", function () {
     });
 
     it("repay: invalid amount", async () => {
-      const accruedInterest = await c.USDC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - loanAmount
+      const accruedInterest = await c.USDC_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2) - loanAmount
+      await c.USDC_LiquidityPool.setInsuranceRateMultiplier(0)
       await expect(
         c.MarginTrading.connect(c.deployer).repay(marginAccountID, await c.USDC.getAddress(), loanAmount + USDCprovideAmount)
       ).to.changeTokenBalances(
@@ -424,7 +426,7 @@ describe("margin_trading.spec.ts", function () {
     it("liquidate check PortfolioRatio", async () => {
       const changePrice1 = parseUnits("3500", await c.USDC.decimals())
       await c.QuoterMock.setSwapPrice(await c.WETH.getAddress(), await c.USDC.getAddress(), changePrice1)
-      await c.MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
+      await c.AggregatorV3_WETH_USDC.setAnswer(parseUnits("3500", 8))
 
       let portfolioValueSwap = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       let accruedInterest = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - WETHprovideAmount
@@ -435,11 +437,11 @@ describe("margin_trading.spec.ts", function () {
 
       const changePrice2 = parseUnits("4000", await c.USDC.decimals())
       await c.QuoterMock.setSwapPrice(await c.WETH.getAddress(), await c.USDC.getAddress(), changePrice2)
-      await c.MockAggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
+      await c.AggregatorV3_WETH_USDC.setAnswer(parseUnits("4000", 8))
 
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("54000", await c.USDC.decimals()))
-      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("54000", 8))
+      await c.AggregatorV3_WBTC_USDC.setAnswer(parseUnits("54000", 8))
       
       portfolioValueSwap = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       accruedInterest = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) - WETHprovideAmount
@@ -464,13 +466,16 @@ describe("margin_trading.spec.ts", function () {
     it("liquidate and attempt to trigger a swap in the red zone", async () => {
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("56000", await c.USDC.decimals()))
-      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+      await c.AggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+
       await expect(
         c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.USDC.getAddress(), await c.WETH.getAddress(), loanAmount, 0)
       ).to.be.revertedWith("Cannot swap")
+
       const MarginAccountValue = await c.MarginTrading.calculateMarginAccountValue.staticCall(marginAccountID)
       const WETHdebt = await c.WETH_LiquidityPool.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1) * parseUnits("4000", await c.USDC.decimals())/parseUnits("1", await c.WETH.decimals())
       const liquidatorFee = (MarginAccountValue - WETHdebt)*BigInt(5)/BigInt(100)
+
       await expect(
         c.MarginTrading.connect(c.deployer).liquidate(marginAccountID)
       ).to.changeTokenBalances(
@@ -478,6 +483,7 @@ describe("margin_trading.spec.ts", function () {
         [await c.deployer.getAddress()], 
         [liquidatorFee]
       ) 
+
       expect(
         await c.MarginTrading.getMarginAccountRatio.staticCall(marginAccountID)
       ).to.be.eq(MaxUint256)
@@ -486,20 +492,22 @@ describe("margin_trading.spec.ts", function () {
     it("liquidate and return an inactive option", async () => {
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("56000", await c.USDC.decimals()))
-      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+      await c.AggregatorV3_WBTC_USDC.setAnswer(parseUnits("56000", 8))
+
       const optionId = BigInt(0)
       await c.MarginTrading.connect(c.deployer).provideERC721(marginAccountID, await c.HegicPositionsManager.getAddress(), optionId)
       const oneWeek = 60*60*24*7
       await c.MockOperationalTreasury.setLockedLiquidity(optionId, oneWeek, 0)      
 
       await c.MarginTrading.liquidate(marginAccountID)
+
       expect(await c.HegicPositionsManager.ownerOf(optionId)).to.be.eq(await c.deployer.getAddress())
     })
 
     it("liquidate insurancePool", async () => {
       await c.MarginTrading.connect(c.deployer).swap(marginAccountID, await c.WETH.getAddress(), await c.WBTC.getAddress(), loanAmount, 0)
       await c.QuoterMock.setSwapPrice(await c.WBTC.getAddress(), await c.USDC.getAddress(), parseUnits("50000", await c.USDC.decimals()))
-      await c.MockAggregatorV3_WBTC_USDC.setAnswer(parseUnits("50000", 8))
+      await c.AggregatorV3_WBTC_USDC.setAnswer(parseUnits("50000", 8))
       expect(
         await c.MarginTrading.calculateDebtWithAccruedInterest.staticCall(marginAccountID)
       ).to.be.greaterThan(

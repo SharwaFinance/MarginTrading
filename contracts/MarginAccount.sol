@@ -56,7 +56,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
 
     uint public erc721Limit = 10;
     uint public timelock = 0;
-    uint public liquidatorFee = 0.05 * 1e5;
+    uint public liquidatorFee = 0;
 
     constructor(
         address _insurancePool
@@ -314,7 +314,7 @@ contract MarginAccount is IMarginAccount, AccessControl {
             address liquidityPoolAddress = tokenToLiquidityPool[availableTokenToLiquidityPool[i]];   
             uint poolDebt = ILiquidityPool(liquidityPoolAddress).getDebtWithAccruedInterest(marginAccountID);
             if (poolDebt != 0) {
-                uint amountInUSDC = modularSwapRouter.calculateAmountInERC20(baseToken, availableTokenToLiquidityPool[i], poolDebt);
+                uint amountInUSDC = modularSwapRouter.calculateAmountInERC20(availableTokenToLiquidityPool[i], baseToken, poolDebt);
                 uint userUSDCbalance = getErc20ByContract(marginAccountID, baseToken);
                 if (amountInUSDC > userUSDCbalance) {
                     uint amountOutMinimum = modularSwapRouter.calculateAmountOutERC20(baseToken, availableTokenToLiquidityPool[i], userUSDCbalance);
@@ -323,14 +323,16 @@ contract MarginAccount is IMarginAccount, AccessControl {
                     IERC20(availableTokenToLiquidityPool[i]).transferFrom(insurancePool, address(this), poolDebt-amountOut); 
                 } else {
                     uint amountIn = modularSwapRouter.swapOutput(availableTokenToLiquidityPool[i], baseToken, poolDebt);
+                    emit LiquidateERC20(marginAccountID, baseToken, availableTokenToLiquidityPool[i], amountIn, poolDebt);
                     erc20ByContract[marginAccountID][baseToken] -= amountIn;
                 }
                 ILiquidityPool(liquidityPoolAddress).repay(marginAccountID, poolDebt);
             }
         }
         uint userUSDCbalanceAfterRepay = getErc20ByContract(marginAccountID, baseToken);
-        uint liquidatorComission = userUSDCbalanceAfterRepay*liquidatorFee/COEFFICIENT_DECIMALS;
-        erc20ByContract[marginAccountID][baseToken] -= liquidatorComission;
-        IERC20(baseToken).transfer(liquidator, liquidatorComission); 
+        uint liquidatorCommission = userUSDCbalanceAfterRepay*liquidatorFee/COEFFICIENT_DECIMALS;
+        erc20ByContract[marginAccountID][baseToken] -= liquidatorCommission;
+        IERC20(baseToken).transfer(liquidator, liquidatorCommission); 
+        emit LiquidatorCommission(liquidatorCommission);
     }
 }
