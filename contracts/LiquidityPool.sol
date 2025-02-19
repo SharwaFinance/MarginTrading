@@ -244,14 +244,22 @@ function repay(uint marginAccountID, uint amount) external onlyRole(MARGIN_ACCOU
         );
         uint newTotalBorrow = ((netDebt + totalInterestSnapshot) *
                 intoUint256(pow(temp, div(convert(checkTime - totalBorrowsSnapshotTimestamp), convert(ONE_YEAR_SECONDS))))) / 1e18;
-        return (newTotalBorrow * shareOfDebt[marginAccountID]) / debtSharesSum;
+        uint debtWithAccruedInterest = (newTotalBorrow * shareOfDebt[marginAccountID]) / debtSharesSum;
+        if (debtWithAccruedInterest < portfolioIdToDebt[marginAccountID]) {
+            debtWithAccruedInterest = portfolioIdToDebt[marginAccountID];
+        }
+        return debtWithAccruedInterest;
     }
 
     // PUBLIC FUNCTIONS //
 
     function getDebtWithAccruedInterest(uint marginAccountID) public view returns (uint debtByPool) {
         if (debtSharesSum == 0) return 0;
-        return (totalBorrows() * shareOfDebt[marginAccountID]) / debtSharesSum;
+        uint debtWithAccruedInterest = (totalBorrows() * shareOfDebt[marginAccountID]) / debtSharesSum;
+        if (debtWithAccruedInterest < portfolioIdToDebt[marginAccountID]) {
+            debtWithAccruedInterest = portfolioIdToDebt[marginAccountID];
+        }
+        return debtWithAccruedInterest;
     }
 
     function totalBorrows() public view returns (uint) {

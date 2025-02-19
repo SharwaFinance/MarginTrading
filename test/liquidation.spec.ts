@@ -227,6 +227,7 @@ describe("liquidation.spec.ts", function () {
   });
 
   it("Should correctly split USDC between the liquidity pool and the insurance pool when the margin account is liquidated", async () => {
+    await margin_account.setLiquidatorFee(0.05*1e5)
     const margin_account_id_0 = 0
 
     const amount_to_withdraw = parseUnits("500", 6)

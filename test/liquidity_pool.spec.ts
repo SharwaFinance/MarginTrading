@@ -2,11 +2,13 @@ import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect, assert } from "chai";
 import { ethers } from "hardhat";
 import { Signer, parseUnits, keccak256, toUtf8Bytes, ZeroAddress  } from "ethers";
-import { USDCMock, LiquidityPool, MarginTradingMock } from "../typechain-types";
+import { USDCMock, WBTCMock, LiquidityPool, MarginTradingMock } from "../typechain-types";
 
 describe("liquidity_pool.spec.sol", function () {
   let USDC: USDCMock
+  let WBTC: WBTCMock
   let liquidityPoolUSDC: LiquidityPool
+  let liquidityPoolWBTC: LiquidityPool
   let deployer: Signer
   let firstInvestor: Signer
   let secondInvestor: Signer
@@ -29,6 +31,8 @@ describe("liquidity_pool.spec.sol", function () {
 
     const USDCMock = await ethers.getContractFactory("USDCMock");
     USDC = await USDCMock.deploy();
+    const WBTCMock = await ethers.getContractFactory("WBTCMock");
+    WBTC = await WBTCMock.deploy();
 
     const MarginTradingMock = await ethers.getContractFactory("MarginTradingMock");
     marginTrading = await MarginTradingMock.deploy();
@@ -43,7 +47,7 @@ describe("liquidity_pool.spec.sol", function () {
       'SF-LP-USDC',
       'SF-LP-USDC',
       parseUnits("500000", 6)
-    ) ;
+    );
     await marginTrading.setLiquidityPoolContract(await liquidityPoolUSDC.getAddress());
     await liquidityPoolUSDC.grantRole(MANAGER_ROLE, deployer)
 
@@ -171,7 +175,433 @@ describe("liquidity_pool.spec.sol", function () {
       ).to.equal(ethers.parseUnits("0", 0));
       
     })
-  })
+  });
+
+  describe("Rounding due to the second trader's large position", async () => {
+    beforeEach(async () => {
+      const MANAGER_ROLE = keccak256(toUtf8Bytes("MANAGER_ROLE"));
+
+      const LiquidityPoolWBTC = await ethers.getContractFactory("LiquidityPool");
+      liquidityPoolWBTC = await LiquidityPoolWBTC.deploy(
+        await insurancePool.getAddress(),
+        await marginTrading.getAddress(),
+        await USDC.getAddress(),
+        await WBTC.getAddress(),
+        'SF-LP-WBTC',
+        'SF-LP-WBTC',
+        parseUnits("1", 8)
+      );
+      await marginTrading.setLiquidityPoolContract(await liquidityPoolWBTC.getAddress());
+      await liquidityPoolWBTC.grantRole(MANAGER_ROLE, deployer)
+      await liquidityPoolWBTC.setInterestRate(0.005*1e4)
+
+      const amountOtherWBTC = ethers.parseUnits("1", 8);
+      await WBTC.transfer(await firstInvestor.getAddress(), amountOtherWBTC); 
+      await WBTC.transfer(await secondInvestor.getAddress(), amountOtherWBTC); 
+
+      let amount = ethers.parseUnits("30500000", 0);
+      await WBTC
+        .connect(firstInvestor)
+        .transfer(await insurancePool.getAddress(), amount);
+      await WBTC
+        .connect(firstInvestor)
+        .transfer(await marginTrading.getAddress(), amount); 
+  
+      const amountFirstInvestor = ethers.parseUnits("30500000", 0);
+      await WBTC
+        .connect(firstInvestor)
+        .approve(await liquidityPoolWBTC.getAddress(), amountFirstInvestor);
+      await liquidityPoolWBTC
+        .connect(firstInvestor)
+        .provide(amountFirstInvestor);
+    })
+    
+    it("Checking for Rounding Correctness 1", async () => {
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("10000", 0)
+        );
+      
+      await time.increaseTo(await time.latest() + 90311);
+      
+      await marginTrading
+        .connect(secondTrader)
+        .borrow(
+          ethers.parseUnits("21", 0),
+          ethers.parseUnits("10000000", 0)
+        );
+
+      await time.increaseTo(await time.latest() + 33047);
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("21", 0), await time.latest() + 2))
+        );
+      
+      console.log("repay second Trader")
+      await marginTrading.connect(secondTrader).repay(
+        ethers.parseUnits("21", 0),
+        ethers.parseUnits("9818743", 0),
+        await WBTC.getAddress(),
+        ethers.parseUnits("9818743", 0)
+      );
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 2))
+        );
+      
+      console.log("repay first Trader", await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1))
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("1", 0),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1)
+      );
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("21", 0), await time.latest() + 2))
+        );
+      
+      console.log("repay second Trader")
+      await marginTrading.connect(secondTrader).repay(
+        ethers.parseUnits("21", 0),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("21", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("21", 0), await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolUSDC.netDebt(),
+        "netDebt = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+      expect(
+        await liquidityPoolUSDC.totalBorrows(),
+        "totalBorrows = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      
+      expect(
+        await liquidityPoolUSDC.totalInterestSnapshot(),
+        "totalInterestSnapshot = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+    })
+
+    it("Checking for Rounding Correctness 2 (Three traders borrow and their share is not layered on top of each other)", async () => {
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("333333", 0)
+        );
+      
+      await time.increaseTo(await time.latest() + 60*60*8);
+      
+      await marginTrading
+        .connect(secondTrader)
+        .borrow(
+          ethers.parseUnits("2", 0),
+          ethers.parseUnits("333333", 0)
+        );
+
+      await time.increaseTo(await time.latest() + 60*60*6);
+
+      await marginTrading
+        .connect(secondInvestor)
+        .borrow(
+          ethers.parseUnits("3", 0),
+          ethers.parseUnits("333333", 0)
+        );
+
+      for (let i = 2; i > 0; i--) {
+        let marginAccountID = ethers.parseUnits("" + i, 0);
+        await WBTC
+          .connect(insurancePool)
+          .approve(
+            await marginTrading.getAddress(),
+            (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2))
+          );
+        
+        if (i == 2) {
+          expect(
+            await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+            "2 getDebtWithAccruedInterestOnTime = 333333"
+          ).to.equal(ethers.parseUnits("333333", 0));
+        } else if (i == 1) {
+          expect(
+            await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+            "1 getDebtWithAccruedInterestOnTime = 333335"
+          ).to.equal(ethers.parseUnits("333335", 0));
+        }
+
+        await marginTrading.connect(firstTrader).repay(
+          marginAccountID,
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+          await WBTC.getAddress(),
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1)
+        );
+      }
+
+      let marginAccountID = ethers.parseUnits("" + 3, 0);
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2))
+        );
+
+        expect(
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+          "3 getDebtWithAccruedInterestOnTime = 333334"
+        ).to.equal(ethers.parseUnits("333334", 0));
+
+      await marginTrading.connect(firstTrader).repay(
+        marginAccountID,
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolUSDC.netDebt(),
+        "netDebt = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+      expect(
+        await liquidityPoolUSDC.totalBorrows(),
+        "totalBorrows = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      
+      expect(
+        await liquidityPoolUSDC.totalInterestSnapshot(),
+        "totalInterestSnapshot = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+    })
+
+    it("Checking for Rounding Correctness 3 (Three traders borrow, and their shares do not overlap during the year)", async () => {
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("333333", 0)
+        );
+      
+      await time.increaseTo(await time.latest() + 60*60*24*365);
+      
+      await marginTrading
+        .connect(secondTrader)
+        .borrow(
+          ethers.parseUnits("2", 0),
+          ethers.parseUnits("333333", 0)
+        );
+
+      await time.increaseTo(await time.latest() + 60*60*24*365);
+
+      await marginTrading
+        .connect(secondInvestor)
+        .borrow(
+          ethers.parseUnits("3", 0),
+          ethers.parseUnits("333333", 0)
+        );
+
+      await time.increaseTo(await time.latest() + 60*60*24*365);
+
+      for (let i = 2; i > 0; i--) {
+        let marginAccountID = ethers.parseUnits("" + i, 0);
+        await WBTC
+          .connect(insurancePool)
+          .approve(
+            await marginTrading.getAddress(),
+            (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2))
+          );
+        
+        if (i == 2) {
+          expect(
+            await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+            "2 getDebtWithAccruedInterestOnTime = 336674"
+          ).to.equal(ethers.parseUnits("336674", 0));
+        } else if (i == 1) {
+          expect(
+            await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+            "1 getDebtWithAccruedInterestOnTime = 338356"
+          ).to.equal(ethers.parseUnits("338356", 0));
+        }
+
+        await marginTrading.connect(firstTrader).repay(
+          marginAccountID,
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+          await WBTC.getAddress(),
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1)
+        );
+      }
+
+      let marginAccountID = ethers.parseUnits("" + 3, 0);
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 2))
+        );
+
+        expect(
+          await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1),
+          "3 getDebtWithAccruedInterestOnTime = 334999"
+        ).to.equal(ethers.parseUnits("334999", 0));
+
+      await marginTrading.connect(firstTrader).repay(
+        marginAccountID,
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(marginAccountID, await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolUSDC.netDebt(),
+        "netDebt = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+      expect(
+        await liquidityPoolUSDC.totalBorrows(),
+        "totalBorrows = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      
+      expect(
+        await liquidityPoolUSDC.totalInterestSnapshot(),
+        "totalInterestSnapshot = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+    })
+
+    it("Checking for Rounding Correctness 4 (A major trader has taken on a debt, after which the second trader takes on a new minor debt)", async () => {
+      console.log("borrow first Trader");
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("10000000", 0)
+        );
+      
+      await time.increaseTo(await time.latest() + 60*60*24*30);
+      
+      console.log("borrow second Trader");
+      await marginTrading
+        .connect(secondTrader)
+        .borrow(
+          ethers.parseUnits("2", 0),
+          ethers.parseUnits("10", 0)
+        );
+
+      await time.increaseTo(await time.latest() + 60*60*24*30);
+      
+      console.log("borrow first Trader");
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("1", 0)
+        );
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 2))
+        );
+      
+      console.log("repay first Trader")
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("1", 0),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1),
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1),
+        "DebtWithAccruedInterest = 11"
+      ).to.equal(ethers.parseUnits("11", 0));
+
+      console.log("borrow first Trader")
+      await marginTrading
+        .connect(firstTrader)
+        .borrow(
+          ethers.parseUnits("1", 0),
+          ethers.parseUnits("1", 0)
+        );
+
+      expect(
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1),
+        "DebtWithAccruedInterest = 1"
+      ).to.equal(ethers.parseUnits("1", 0));
+
+      expect(
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1),
+        "DebtWithAccruedInterest = 10"
+      ).to.equal(ethers.parseUnits("10", 0));
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 2))
+        );
+      
+        console.log("repay second Trader");
+      await marginTrading.connect(secondTrader).repay(
+        ethers.parseUnits("2", 0),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1), // repayment of the entire debt, it is expected that MarginTrading will independently call this function
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("2", 0), await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1),
+        "DebtWithAccruedInterest = 2"
+      ).to.equal(ethers.parseUnits("2", 0));
+
+      await WBTC
+        .connect(insurancePool)
+        .approve(
+          await marginTrading.getAddress(),
+          (await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 2))
+        );
+      
+      console.log("repay first Trader")
+      await marginTrading.connect(firstTrader).repay(
+        ethers.parseUnits("1", 0),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1),
+        await WBTC.getAddress(),
+        await liquidityPoolWBTC.getDebtWithAccruedInterestOnTime(ethers.parseUnits("1", 0), await time.latest() + 1)
+      );
+
+      expect(
+        await liquidityPoolUSDC.netDebt(),
+        "netDebt = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+      expect(
+        await liquidityPoolUSDC.totalBorrows(),
+        "totalBorrows = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+      
+      expect(
+        await liquidityPoolUSDC.totalInterestSnapshot(),
+        "totalInterestSnapshot = 0"
+      ).to.equal(ethers.parseUnits("0", 0));
+
+    })
+  });
 
   describe("Check deployment", function () {
     it("balance of USDC & minted shares of LiquidityPoolUSDC", async function () {
